@@ -1,0 +1,594 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #edf1f5;
+  color: #111;
+}
+
+button {
+  border: none;
+  border-radius: 14px;
+  padding: 14px 18px;
+  background: #e00000;
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+button:hover {
+  transform: scale(1.02);
+}
+
+input,
+select {
+  width: 100%;
+  padding: 13px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  font-size: 14px;
+  background: white;
+  color: #111;
+}
+
+/* ================= ENGINEERING OS ================= */
+
+.engineeringOS {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  background: #edf1f5;
+}
+
+/* ================= SIDEBAR ================= */
+
+.osSidebar {
+  background: #111;
+  color: white;
+  padding: 20px;
+  height: 100vh;
+  overflow: auto;
+}
+
+/* COMPANY NAME FIXED */
+
+.osSidebar h2 {
+  font-size: 26px;
+  margin-bottom: 8px;
+  color: white;
+  background: #e00000;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.osSidebar p {
+  color: #111;
+  background: white;
+  font-weight: 900;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.osSidebar button {
+  width: 100%;
+  margin-bottom: 10px;
+  background: #222;
+  text-align: left;
+  color: white;
+}
+
+.osSidebar button:hover,
+.osActive {
+  background: #e00000 !important;
+}
+
+.osWorkspace {
+  height: 100vh;
+  overflow: auto;
+}
+
+/* ================= HOME ================= */
+
+.osHome {
+  padding: 30px;
+}
+
+.osHome h1 {
+  font-size: 36px;
+  margin-bottom: 8px;
+  color: #111;
+}
+
+.osHome > p {
+  color: #e00000;
+  font-weight: 900;
+  margin-bottom: 25px;
+}
+
+.osCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.osCards div,
+.osPlaceholder {
+  background: white;
+  padding: 24px;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-left: 7px solid #e00000;
+}
+
+.osCards h3,
+.osPlaceholder h2 {
+  margin-bottom: 10px;
+  color: #e00000;
+}
+
+/* ================= COMMON HEADERS ================= */
+
+.finalHeader,
+.multiHeader,
+.ductHeader,
+.pressureHeader,
+.fanCatalogHeader,
+.filterHeader,
+.coilHeader,
+.pumpHeader {
+  background: #111;
+  color: white;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.finalHeader h1,
+.multiHeader h1,
+.ductHeader h1,
+.pressureHeader h1,
+.fanCatalogHeader h1,
+.filterHeader h1,
+.coilHeader h1,
+.pumpHeader h1 {
+  font-size: 28px;
+  margin-bottom: 6px;
+  color: white;
+}
+
+.finalHeader p,
+.multiHeader p,
+.ductHeader p,
+.pressureHeader p,
+.fanCatalogHeader p,
+.filterHeader p,
+.coilHeader p,
+.pumpHeader p {
+  color: #ff4b4b;
+  font-weight: 800;
+}
+
+/* ================= COMMON GRIDS ================= */
+
+.finalGrid,
+.multiGrid,
+.ductGrid,
+.pressureGrid,
+.fanCatalogGrid,
+.filterGrid,
+.coilGrid,
+.pumpGrid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 18px;
+  padding: 18px;
+}
+
+/* ================= LEFT PANELS ================= */
+
+.finalInput,
+.roomInputPanel,
+.ductInputPanel,
+.pressureInputPanel,
+.fanInputPanel,
+.filterInputPanel,
+.coilInputPanel,
+.pumpInputPanel {
+  background: #111;
+  color: white;
+  padding: 22px;
+  border-radius: 22px;
+  height: calc(100vh - 130px);
+  overflow: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.finalInput h2,
+.roomInputPanel h2,
+.ductInputPanel h2,
+.pressureInputPanel h2,
+.fanInputPanel h2,
+.filterInputPanel h2,
+.coilInputPanel h2,
+.pumpInputPanel h2 {
+  margin-bottom: 18px;
+  color: white;
+}
+
+.finalInput h3,
+.roomInputPanel h3,
+.ductInputPanel h3,
+.pressureInputPanel h3,
+.fanInputPanel h3,
+.filterInputPanel h3,
+.coilInputPanel h3,
+.pumpInputPanel h3 {
+  color: #ff4b4b;
+  margin-bottom: 12px;
+}
+
+.finalInput label,
+.pressureInputPanel label,
+.fanInputPanel label,
+.filterInputPanel label,
+.coilInputPanel label,
+.pumpInputPanel label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 800;
+  color: white;
+}
+
+/* ================= OUTPUT PANELS ================= */
+
+.finalOutput,
+.multiOutputPanel,
+.ductOutputPanel,
+.pressureOutputPanel,
+.fanOutputPanel,
+.filterOutputPanel,
+.coilOutputPanel,
+.pumpOutputPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ================= COMMON PANELS ================= */
+
+.emptyState,
+.standardPanel,
+.drawingPanel,
+.chartCard,
+.tablePanel,
+.warningPanel {
+  background: white;
+  padding: 22px;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.emptyState h2,
+.standardPanel h2,
+.drawingPanel h2,
+.chartCard h2,
+.tablePanel h2,
+.warningPanel h2 {
+  margin-bottom: 14px;
+  color: #111;
+}
+
+/* ================= KPI ================= */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.kpiGrid div {
+  background: white;
+  padding: 18px;
+  border-radius: 18px;
+  border-left: 6px solid #e00000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.kpiGrid span {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.kpiGrid strong {
+  font-size: 21px;
+  color: #111;
+}
+
+/* ================= NOTES ================= */
+
+.fanNote,
+.filterNote,
+.coilNote,
+.pumpNote {
+  background: white;
+  color: #111;
+  padding: 14px;
+  border-radius: 14px;
+  margin-top: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.standardPanel p {
+  margin-bottom: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #111;
+}
+
+/* ================= TABLE ================= */
+
+.tablePanel {
+  overflow: auto;
+}
+
+.tablePanel table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.tablePanel th {
+  background: #111;
+  color: white;
+  padding: 13px;
+  text-align: left;
+}
+
+.tablePanel td {
+  padding: 13px;
+  border: 1px solid #ddd;
+  font-weight: 700;
+  color: #111;
+}
+
+.tablePanel tr:nth-child(even) {
+  background: #f5f5f5;
+}
+
+/* ================= WARNING ================= */
+
+.warningPanel {
+  border-left: 8px solid #e00000;
+}
+
+.warningPanel p {
+  margin-bottom: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #111;
+}
+
+/* ================= SCROLL ================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1200px) {
+  .engineeringOS {
+    grid-template-columns: 1fr;
+  }
+
+  .osSidebar {
+    height: auto;
+  }
+
+  .osWorkspace {
+    height: auto;
+  }
+
+  .finalGrid,
+  .multiGrid,
+  .ductGrid,
+  .pressureGrid,
+  .fanCatalogGrid,
+  .filterGrid,
+  .coilGrid,
+  .pumpGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .finalInput,
+  .roomInputPanel,
+  .ductInputPanel,
+  .pressureInputPanel,
+  .fanInputPanel,
+  .filterInputPanel,
+  .coilInputPanel,
+  .pumpInputPanel {
+    height: auto;
+  }
+}
+.authPage{
+  min-height:100vh;
+  background:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+.authBox{
+  width:100%;
+  max-width:430px;
+  background:white;
+  padding:28px;
+  border-radius:24px;
+  box-shadow:0 12px 35px rgba(0,0,0,0.3);
+}
+
+.authBox h1{
+  color:white;
+  background:#e00000;
+  padding:14px;
+  border-radius:14px;
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.authBox > p{
+  text-align:center;
+  font-weight:900;
+  color:#111;
+  margin-bottom:18px;
+}
+
+.authBox label{
+  display:block;
+  margin-bottom:8px;
+  font-weight:900;
+  color:#111;
+}
+
+.authTabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:16px;
+}
+
+.authTabs button{
+  background:#222;
+}
+
+.authActive{
+  background:#e00000 !important;
+}
+
+.authMessage{
+  margin-top:14px;
+  background:#f5f5f5;
+  color:#111;
+  padding:12px;
+  border-radius:12px;
+  font-weight:800;
+}
+
+.authNote{
+  background:#111;
+  color:white;
+  padding:14px;
+  border-radius:14px;
+  margin-top:16px;
+  line-height:1.5;
+}
+
+.secureTopBar{
+  background:#e00000;
+  color:white;
+  padding:10px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  font-weight:800;
+}
+
+.secureTopBar button{
+  background:#111;
+  width:auto;
+}
+/* ================= AUTH SCREEN FINAL FIX ================= */
+
+.authPage{
+  min-height:100vh;
+  background:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+.authBox{
+  width:100%;
+  max-width:430px;
+  background:white;
+  padding:28px;
+  border-radius:24px;
+  box-shadow:0 12px 35px rgba(0,0,0,0.3);
+}
+
+.authBox h1{
+  color:white;
+  background:#e00000;
+  padding:14px;
+  border-radius:14px;
+  text-align:center;
+  margin-bottom:10px;
+}
+
+.authBox p,
+.authBox label{
+  color:#111;
+  font-weight:900;
+}
+
+.authTabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:16px 0;
+}
+
+.authActive{
+  background:#e00000 !important;
+}
+
+.authMessage{
+  margin-top:14px;
+  background:#f5f5f5;
+  color:#111;
+  padding:12px;
+  border-radius:12px;
+  font-weight:800;
+}
+
+.secureTopBar{
+  background:#e00000;
+  color:white;
+  padding:10px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:800;
+}
+
+.secureTopBar button{
+  background:#111;
+  width:auto;
+}
