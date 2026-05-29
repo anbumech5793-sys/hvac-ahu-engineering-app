@@ -21,7 +21,7 @@ import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDash
 export default function EngineeringOSDashboard({ access }) {
   const [activeModule, setActiveModule] = useState("home");
 
-  const userRole = String(access?.profile?.role || "user").toLowerCase();
+  const userRole = String(access?.profile?.role || "user").trim().toLowerCase();
   const isAdmin = userRole === "admin";
 
   const modules = [
@@ -81,7 +81,7 @@ export default function EngineeringOSDashboard({ access }) {
       case "projectDatabase":
         return <ProfessionalProjectDatabaseDashboard />;
       case "admin":
-        return <ProfessionalAdminDashboard />;
+        return isAdmin ? <ProfessionalAdminDashboard /> : <ProfessionalDashboardHome />;
       case "settings":
         return <ProfessionalSettingsDashboard />;
       default:
