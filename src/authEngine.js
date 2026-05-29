@@ -1,18 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://iqeeoyraytiulypxxqon.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWVveXJheXRpdWx5cHh4cW9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTUxMDYsImV4cCI6MjA5NDIzMTEwNn0.ww376msHQyv6M5U99xgJI3_VmmnR_k1yJPUT07cJ2fM";
+
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWVveXJheXRpdWx5cHh4cW9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTUxMDYsImV4cCI6MjA5NDIzMTEwNn0.ww376msHQyv6M5U99xgJI3_VmmnR_k1yJPUT07cJ2fM";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export async function signUpUser({ email, password, fullName }) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: cleanEmail,
     password,
     options: {
-      data: {
-        full_name: fullName,
-      },
+      data: { full_name: fullName || "" },
     },
   });
 
@@ -21,8 +23,10 @@ export async function signUpUser({ email, password, fullName }) {
 }
 
 export async function loginUser({ email, password }) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: cleanEmail,
     password,
   });
 
@@ -47,11 +51,11 @@ export async function checkUserAccess() {
 
   const user = userData.user;
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profiles, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .maybeSingle();
+    .limit(1);
 
   if (profileError) {
     return {
@@ -60,6 +64,8 @@ export async function checkUserAccess() {
     };
   }
 
+  const profile = profiles?.[0];
+
   if (!profile) {
     return {
       allowed: false,
@@ -67,7 +73,9 @@ export async function checkUserAccess() {
     };
   }
 
-  if (profile.status !== "approved") {
+  const profileStatus = String(profile.status || "").trim().toLowerCase();
+
+  if (profileStatus !== "approved") {
     return {
       allowed: false,
       reason: "Your account is pending admin approval.",
@@ -75,12 +83,14 @@ export async function checkUserAccess() {
     };
   }
 
-  const { data: license, error: licenseError } = await supabase
+  const { data: licenses, error: licenseError } = await supabase
     .from("licenses")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
+    .in("status", ["Approved", "Active", "approved", "active"])
+    .gte("expiry_date", new Date().toISOString())
+    .order("expiry_date", { ascending: false })
+    .limit(1);
 
   if (licenseError) {
     return {
@@ -90,20 +100,13 @@ export async function checkUserAccess() {
     };
   }
 
+  const license = licenses?.[0];
+
   if (!license) {
     return {
       allowed: false,
       reason: "No active license found.",
       profile,
-    };
-  }
-
-  if (new Date() > new Date(license.expiry_date)) {
-    return {
-      allowed: false,
-      reason: "License expired.",
-      profile,
-      license,
     };
   }
 
