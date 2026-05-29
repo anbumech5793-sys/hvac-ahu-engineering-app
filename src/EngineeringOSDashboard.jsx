@@ -18,8 +18,11 @@ import ProfessionalProjectDatabaseDashboard from "./components/ProfessionalProje
 import ProfessionalAdminDashboard from "./components/ProfessionalAdminDashboard";
 import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDashboard";
 
-export default function EngineeringOSDashboard() {
+export default function EngineeringOSDashboard({ access }) {
   const [activeModule, setActiveModule] = useState("home");
+
+  const userRole = String(access?.profile?.role || "user").toLowerCase();
+  const isAdmin = userRole === "admin";
 
   const modules = [
     ["home", "Home"],
@@ -37,63 +40,50 @@ export default function EngineeringOSDashboard() {
     ["export", "Export"],
     ["validation", "Validation"],
     ["projectDatabase", "Project Database"],
-    ["admin", "Admin Panel"],
+    ...(isAdmin ? [["admin", "Admin Panel"]] : []),
     ["settings", "Settings"],
   ];
 
   const renderModule = () => {
+    if (activeModule === "admin" && !isAdmin) {
+      return <ProfessionalDashboardHome />;
+    }
+
     switch (activeModule) {
       case "home":
         return <ProfessionalDashboardHome />;
-
       case "projectInput":
         return <ProfessionalProjectInputDashboard />;
-
       case "heatLoad":
         return <ProfessionalHeatLoadDashboard />;
-
       case "psychrometric":
         return <ProfessionalPsychrometricDashboard />;
-
       case "coilSelection":
         return <ProfessionalCoilSelectionDashboard />;
-
       case "blowerSelection":
         return <ProfessionalBlowerSelectionDashboard />;
-
       case "filterSelection":
         return <ProfessionalFilterSelectionDashboard />;
-
       case "ductSizing":
         return <ProfessionalDuctSizingDashboard />;
-
       case "ahuCosting":
         return <ProfessionalAHUCostingDashboard />;
-
       case "ahuLayout":
         return <ProfessionalAHULayoutDashboard />;
-
       case "bom":
         return <ProfessionalBOMDashboard />;
-
       case "projectReport":
         return <ProfessionalProjectReportDashboard />;
-
       case "export":
         return <ProfessionalExportDashboard />;
-
       case "validation":
         return <ProfessionalValidationDashboard />;
-
       case "projectDatabase":
         return <ProfessionalProjectDatabaseDashboard />;
-
       case "admin":
         return <ProfessionalAdminDashboard />;
-
       case "settings":
         return <ProfessionalSettingsDashboard />;
-
       default:
         return <ProfessionalDashboardHome />;
     }
@@ -103,6 +93,10 @@ export default function EngineeringOSDashboard() {
     <div className="engineering-layout" style={styles.app}>
       <aside className="engineering-sidebar" style={styles.sidebar}>
         <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
+
+        <div style={styles.userRoleBox}>
+          Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
+        </div>
 
         <div className="engineering-menu" style={styles.menu}>
           {modules.map(([key, label]) => (
@@ -151,7 +145,17 @@ const styles = {
   sidebarTitle: {
     fontSize: "28px",
     fontWeight: "800",
-    marginBottom: "25px",
+    marginBottom: "14px",
+  },
+
+  userRoleBox: {
+    background: "#171717",
+    border: "1px solid #333",
+    borderRadius: "14px",
+    padding: "12px",
+    marginBottom: "22px",
+    color: "#ffcc00",
+    fontSize: "14px",
   },
 
   menu: {
