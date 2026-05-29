@@ -15,6 +15,7 @@ import ProfessionalProjectReportDashboard from "./components/ProfessionalProject
 import ProfessionalExportDashboard from "./components/ProfessionalExportDashboard";
 import ProfessionalValidationDashboard from "./components/ProfessionalValidationDashboard";
 import ProfessionalProjectDatabaseDashboard from "./components/ProfessionalProjectDatabaseDashboard";
+import ProfessionalAdminDashboard from "./components/ProfessionalAdminDashboard";
 import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDashboard";
 
 export default function EngineeringOSDashboard() {
@@ -36,6 +37,7 @@ export default function EngineeringOSDashboard() {
     ["export", "Export"],
     ["validation", "Validation"],
     ["projectDatabase", "Project Database"],
+    ["admin", "Admin Panel"],
     ["settings", "Settings"],
   ];
 
@@ -43,36 +45,55 @@ export default function EngineeringOSDashboard() {
     switch (activeModule) {
       case "home":
         return <ProfessionalDashboardHome />;
+
       case "projectInput":
         return <ProfessionalProjectInputDashboard />;
+
       case "heatLoad":
         return <ProfessionalHeatLoadDashboard />;
+
       case "psychrometric":
         return <ProfessionalPsychrometricDashboard />;
+
       case "coilSelection":
         return <ProfessionalCoilSelectionDashboard />;
+
       case "blowerSelection":
         return <ProfessionalBlowerSelectionDashboard />;
+
       case "filterSelection":
         return <ProfessionalFilterSelectionDashboard />;
+
       case "ductSizing":
         return <ProfessionalDuctSizingDashboard />;
+
       case "ahuCosting":
         return <ProfessionalAHUCostingDashboard />;
+
       case "ahuLayout":
         return <ProfessionalAHULayoutDashboard />;
+
       case "bom":
         return <ProfessionalBOMDashboard />;
+
       case "projectReport":
         return <ProfessionalProjectReportDashboard />;
+
       case "export":
         return <ProfessionalExportDashboard />;
+
       case "validation":
         return <ProfessionalValidationDashboard />;
+
       case "projectDatabase":
         return <ProfessionalProjectDatabaseDashboard />;
+
+      case "admin":
+        return <ProfessionalAdminDashboard />;
+
       case "settings":
         return <ProfessionalSettingsDashboard />;
+
       default:
         return <ProfessionalDashboardHome />;
     }
