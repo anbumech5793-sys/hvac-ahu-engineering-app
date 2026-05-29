@@ -39,7 +39,7 @@ export default function ProfessionalAdminDashboard() {
     if (error) return setMessage(error.message);
 
     setMessage("User approved successfully.");
-    loadData();
+    await loadData();
   }
 
   async function rejectUser(userId) {
@@ -51,7 +51,7 @@ export default function ProfessionalAdminDashboard() {
     if (error) return setMessage(error.message);
 
     setMessage("User rejected.");
-    loadData();
+    await loadData();
   }
 
   async function createMonthlyLicense(userId) {
@@ -70,12 +70,15 @@ export default function ProfessionalAdminDashboard() {
     if (error) return setMessage(error.message);
 
     setMessage("Monthly license created.");
-    loadData();
+    await loadData();
   }
 
   async function extendLicense(licenseId) {
     const license = licenses.find((item) => item.id === licenseId);
-    const baseDate = license?.expiry_date ? new Date(license.expiry_date) : new Date();
+    const baseDate = license?.expiry_date
+      ? new Date(license.expiry_date)
+      : new Date();
+
     baseDate.setMonth(baseDate.getMonth() + 1);
 
     const { error } = await supabase
@@ -89,27 +92,42 @@ export default function ProfessionalAdminDashboard() {
     if (error) return setMessage(error.message);
 
     setMessage("License extended by 1 month.");
-    loadData();
+    await loadData();
   }
 
-  async function deactivateLicense(licenseId) {
+  async function toggleLicenseStatus(license) {
+    const currentStatus = String(license.status || "").toLowerCase();
+
+    const newStatus =
+      currentStatus === "active" || currentStatus === "approved"
+        ? "Inactive"
+        : "Active";
+
     const { error } = await supabase
       .from("licenses")
-      .update({ status: "Inactive" })
-      .eq("id", licenseId);
+      .update({ status: newStatus })
+      .eq("id", license.id);
 
     if (error) return setMessage(error.message);
 
-    setMessage("License deactivated.");
-    loadData();
+    setMessage(`License changed to ${newStatus}.`);
+    await loadData();
   }
 
   const totalUsers = profiles.length;
-  const pendingUsers = profiles.filter((u) => u.status === "pending").length;
-  const approvedUsers = profiles.filter((u) => u.status === "approved").length;
-  const activeLicenses = licenses.filter(
-    (l) => String(l.status).toLowerCase() === "active" || String(l.status).toLowerCase() === "approved"
+
+  const pendingUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "pending"
   ).length;
+
+  const approvedUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "approved"
+  ).length;
+
+  const activeLicenses = licenses.filter((l) => {
+    const status = String(l.status || "").toLowerCase();
+    return status === "active" || status === "approved";
+  }).length;
 
   return (
     <div style={styles.page}>
@@ -149,16 +167,26 @@ export default function ProfessionalAdminDashboard() {
                 <td style={styles.td}>{user.email || "-"}</td>
                 <td style={styles.td}>{user.role || "-"}</td>
                 <td style={styles.td}>{user.status || "-"}</td>
+
                 <td style={styles.td}>
-                  <button style={styles.greenButton} onClick={() => approveUser(user.id)}>
+                  <button
+                    style={styles.greenButton}
+                    onClick={() => approveUser(user.id)}
+                  >
                     Approve
                   </button>
 
-                  <button style={styles.redButton} onClick={() => rejectUser(user.id)}>
+                  <button
+                    style={styles.redButton}
+                    onClick={() => rejectUser(user.id)}
+                  >
                     Reject
                   </button>
 
-                  <button style={styles.blueButton} onClick={() => createMonthlyLicense(user.id)}>
+                  <button
+                    style={styles.blueButton}
+                    onClick={() => createMonthlyLicense(user.id)}
+                  >
                     Create License
                   </button>
                 </td>
@@ -187,6 +215,8 @@ export default function ProfessionalAdminDashboard() {
           <tbody>
             {licenses.map((license) => {
               const user = profiles.find((p) => p.id === license.user_id);
+              const isInactive =
+                String(license.status || "").toLowerCase() === "inactive";
 
               return (
                 <tr key={license.id}>
@@ -196,13 +226,20 @@ export default function ProfessionalAdminDashboard() {
                   <td style={styles.td}>{formatDate(license.start_date)}</td>
                   <td style={styles.td}>{formatDate(license.expiry_date)}</td>
                   <td style={styles.td}>{license.max_projects}</td>
+
                   <td style={styles.td}>
-                    <button style={styles.greenButton} onClick={() => extendLicense(license.id)}>
+                    <button
+                      style={styles.greenButton}
+                      onClick={() => extendLicense(license.id)}
+                    >
                       Extend 1 Month
                     </button>
 
-                    <button style={styles.redButton} onClick={() => deactivateLicense(license.id)}>
-                      Deactivate
+                    <button
+                      style={isInactive ? styles.greenButton : styles.redButton}
+                      onClick={() => toggleLicenseStatus(license)}
+                    >
+                      {isInactive ? "Activate" : "Deactivate"}
                     </button>
                   </td>
                 </tr>
@@ -231,17 +268,113 @@ function formatDate(value) {
 
 const styles = {
   page: { minHeight: "100vh" },
-  heading: { fontSize: "40px", fontWeight: "800", color: "#111827", marginBottom: "10px" },
-  subHeading: { fontSize: "18px", color: "#374151", marginBottom: "22px" },
-  message: { background: "#fef3c7", padding: "14px", borderRadius: "12px", marginBottom: "18px", fontWeight: "700" },
-  summaryCard: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" },
-  summaryBox: { background: "#111827", color: "white", borderRadius: "18px", padding: "20px", display: "flex", flexDirection: "column", gap: "8px" },
-  card: { background: "white", borderRadius: "20px", padding: "30px", boxShadow: "0 6px 20px rgba(0,0,0,0.15)", marginBottom: "30px", overflowX: "auto" },
-  sectionTitle: { fontSize: "24px", color: "#111827", borderBottom: "2px solid #e60000", paddingBottom: "8px", marginBottom: "20px" },
-  table: { width: "100%", borderCollapse: "collapse", minWidth: "1100px" },
-  th: { background: "#111827", color: "white", padding: "14px", textAlign: "left" },
-  td: { borderBottom: "1px solid #e5e7eb", padding: "14px" },
-  greenButton: { background: "#16a34a", color: "white", border: "none", borderRadius: "10px", padding: "10px 14px", fontWeight: "800", cursor: "pointer", marginRight: "8px", marginBottom: "6px" },
-  blueButton: { background: "#2563eb", color: "white", border: "none", borderRadius: "10px", padding: "10px 14px", fontWeight: "800", cursor: "pointer", marginRight: "8px", marginBottom: "6px" },
-  redButton: { background: "#dc2626", color: "white", border: "none", borderRadius: "10px", padding: "10px 14px", fontWeight: "800", cursor: "pointer", marginRight: "8px", marginBottom: "6px" },
+
+  heading: {
+    fontSize: "40px",
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: "10px",
+  },
+
+  subHeading: {
+    fontSize: "18px",
+    color: "#374151",
+    marginBottom: "22px",
+  },
+
+  message: {
+    background: "#fef3c7",
+    padding: "14px",
+    borderRadius: "12px",
+    marginBottom: "18px",
+    fontWeight: "700",
+  },
+
+  summaryCard: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "16px",
+    marginBottom: "24px",
+  },
+
+  summaryBox: {
+    background: "#111827",
+    color: "white",
+    borderRadius: "18px",
+    padding: "20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+
+  card: {
+    background: "white",
+    borderRadius: "20px",
+    padding: "30px",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+    marginBottom: "30px",
+    overflowX: "auto",
+  },
+
+  sectionTitle: {
+    fontSize: "24px",
+    color: "#111827",
+    borderBottom: "2px solid #e60000",
+    paddingBottom: "8px",
+    marginBottom: "20px",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: "1100px",
+  },
+
+  th: {
+    background: "#111827",
+    color: "white",
+    padding: "14px",
+    textAlign: "left",
+  },
+
+  td: {
+    borderBottom: "1px solid #e5e7eb",
+    padding: "14px",
+  },
+
+  greenButton: {
+    background: "#16a34a",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontWeight: "800",
+    cursor: "pointer",
+    marginRight: "8px",
+    marginBottom: "6px",
+  },
+
+  blueButton: {
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontWeight: "800",
+    cursor: "pointer",
+    marginRight: "8px",
+    marginBottom: "6px",
+  },
+
+  redButton: {
+    background: "#dc2626",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontWeight: "800",
+    cursor: "pointer",
+    marginRight: "8px",
+    marginBottom: "6px",
+  },
 };
