@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../authEngine";
 
 export default function ProfessionalAdminDashboard() {
   const [profiles, setProfiles] = useState([]);
   const [licenses, setLicenses] = useState([]);
   const [message, setMessage] = useState("");
+  const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
     loadData();
@@ -50,26 +51,46 @@ export default function ProfessionalAdminDashboard() {
 
     if (error) return setMessage(error.message);
 
-    setMessage("User rejected.");
+    await supabase
+      .from("licenses")
+      .update({ status: "Inactive" })
+      .eq("user_id", userId);
+
+    setMessage("User rejected and licenses deactivated.");
     await loadData();
   }
 
-  async function createMonthlyLicense(userId) {
+  async function createLicense(userId, plan) {
     const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + 1);
+    let maxProjects = 3;
+
+    if (plan === "Monthly") {
+      expiryDate.setMonth(expiryDate.getMonth() + 1);
+      maxProjects = 3;
+    }
+
+    if (plan === "Yearly") {
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      maxProjects = 50;
+    }
+
+    if (plan === "Enterprise") {
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      maxProjects = 999;
+    }
 
     const { error } = await supabase.from("licenses").insert({
       user_id: userId,
-      plan: "Monthly",
+      plan,
       status: "Active",
       start_date: new Date().toISOString(),
       expiry_date: expiryDate.toISOString(),
-      max_projects: 3,
+      max_projects: maxProjects,
     });
 
     if (error) return setMessage(error.message);
 
-    setMessage("Monthly license created.");
+    setMessage(`${plan} license created successfully.`);
     await loadData();
   }
 
@@ -114,6 +135,21 @@ export default function ProfessionalAdminDashboard() {
     await loadData();
   }
 
+  const filteredProfiles = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+
+    if (!q) return profiles;
+
+    return profiles.filter((user) => {
+      return (
+        String(user.full_name || "").toLowerCase().includes(q) ||
+        String(user.email || "").toLowerCase().includes(q) ||
+        String(user.status || "").toLowerCase().includes(q) ||
+        String(user.role || "").toLowerCase().includes(q)
+      );
+    });
+  }, [profiles, searchText]);
+
   const totalUsers = profiles.length;
 
   const pendingUsers = profiles.filter(
@@ -124,17 +160,41 @@ export default function ProfessionalAdminDashboard() {
     (u) => String(u.status || "").toLowerCase() === "approved"
   ).length;
 
-  const activeLicenses = licenses.filter((l) => {
-    const status = String(l.status || "").toLowerCase();
-    return status === "active" || status === "approved";
+  const rejectedUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "rejected"
+  ).length;
+
+  const activeLicenses = licenses.filter((l) =>
+    ["active", "approved"].includes(String(l.status || "").toLowerCase())
+  ).length;
+
+  const expiredLicenses = licenses.filter(
+    (l) => l.expiry_date && new Date(l.expiry_date) < new Date()
+  ).length;
+
+  const expiringSoon = licenses.filter((l) => {
+    if (!l.expiry_date) return false;
+    const days = daysLeft(l.expiry_date);
+    return days >= 0 && days <= 7;
   }).length;
+
+  const estimatedRevenue = licenses.reduce((total, item) => {
+    const status = String(item.status || "").toLowerCase();
+    if (status !== "active" && status !== "approved") return total;
+
+    if (item.plan === "Monthly") return total + 999;
+    if (item.plan === "Yearly") return total + 9999;
+    if (item.plan === "Enterprise") return total + 49999;
+
+    return total;
+  }, 0);
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>Professional Admin Dashboard</h1>
+      <h1 style={styles.heading}>Professional Admin Dashboard V2</h1>
 
       <p style={styles.subHeading}>
-        Manage users, approvals, licenses, subscription expiry, and customer access.
+        Manage users, approvals, licenses, expiry alerts, and estimated revenue.
       </p>
 
       {message && <div style={styles.message}>{message}</div>}
@@ -143,11 +203,26 @@ export default function ProfessionalAdminDashboard() {
         <SummaryBox label="Total Users" value={totalUsers} />
         <SummaryBox label="Pending Users" value={pendingUsers} />
         <SummaryBox label="Approved Users" value={approvedUsers} />
+        <SummaryBox label="Rejected Users" value={rejectedUsers} />
         <SummaryBox label="Active Licenses" value={activeLicenses} />
+        <SummaryBox label="Expired Licenses" value={expiredLicenses} />
+        <SummaryBox label="Expiring Soon" value={expiringSoon} />
+        <SummaryBox label="Estimated Revenue" value={`₹${estimatedRevenue}`} />
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>User Approval Management</h2>
+        <h2 style={styles.sectionTitle}>Search Users</h2>
+
+        <input
+          style={styles.searchInput}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Search by name, email, status, or role..."
+        />
+      </div>
+
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>User Management</h2>
 
         <table style={styles.table}>
           <thead>
@@ -156,12 +231,13 @@ export default function ProfessionalAdminDashboard() {
               <th style={styles.th}>Email</th>
               <th style={styles.th}>Role</th>
               <th style={styles.th}>Status</th>
-              <th style={styles.th}>Actions</th>
+              <th style={styles.th}>User Actions</th>
+              <th style={styles.th}>License Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {profiles.map((user) => (
+            {filteredProfiles.map((user) => (
               <tr key={user.id}>
                 <td style={styles.td}>{user.full_name || "-"}</td>
                 <td style={styles.td}>{user.email || "-"}</td>
@@ -180,14 +256,30 @@ export default function ProfessionalAdminDashboard() {
                     style={styles.redButton}
                     onClick={() => rejectUser(user.id)}
                   >
-                    Reject
+                    Reject / Block
+                  </button>
+                </td>
+
+                <td style={styles.td}>
+                  <button
+                    style={styles.blueButton}
+                    onClick={() => createLicense(user.id, "Monthly")}
+                  >
+                    Monthly
                   </button>
 
                   <button
                     style={styles.blueButton}
-                    onClick={() => createMonthlyLicense(user.id)}
+                    onClick={() => createLicense(user.id, "Yearly")}
                   >
-                    Create License
+                    Yearly
+                  </button>
+
+                  <button
+                    style={styles.purpleButton}
+                    onClick={() => createLicense(user.id, "Enterprise")}
+                  >
+                    Enterprise
                   </button>
                 </td>
               </tr>
@@ -207,6 +299,7 @@ export default function ProfessionalAdminDashboard() {
               <th style={styles.th}>Status</th>
               <th style={styles.th}>Start Date</th>
               <th style={styles.th}>Expiry Date</th>
+              <th style={styles.th}>Days Left</th>
               <th style={styles.th}>Max Projects</th>
               <th style={styles.th}>Actions</th>
             </tr>
@@ -218,6 +311,14 @@ export default function ProfessionalAdminDashboard() {
               const isInactive =
                 String(license.status || "").toLowerCase() === "inactive";
 
+              const remainingDays = daysLeft(license.expiry_date);
+              const expiryStyle =
+                remainingDays < 0
+                  ? styles.expiredText
+                  : remainingDays <= 7
+                  ? styles.warningText
+                  : styles.okText;
+
               return (
                 <tr key={license.id}>
                   <td style={styles.td}>{user?.email || license.user_id}</td>
@@ -225,6 +326,13 @@ export default function ProfessionalAdminDashboard() {
                   <td style={styles.td}>{license.status}</td>
                   <td style={styles.td}>{formatDate(license.start_date)}</td>
                   <td style={styles.td}>{formatDate(license.expiry_date)}</td>
+
+                  <td style={{ ...styles.td, ...expiryStyle }}>
+                    {remainingDays < 0
+                      ? "Expired"
+                      : `${remainingDays} days`}
+                  </td>
+
                   <td style={styles.td}>{license.max_projects}</td>
 
                   <td style={styles.td}>
@@ -264,6 +372,16 @@ function SummaryBox({ label, value }) {
 function formatDate(value) {
   if (!value) return "-";
   return new Date(value).toLocaleDateString();
+}
+
+function daysLeft(dateValue) {
+  if (!dateValue) return 0;
+
+  const today = new Date();
+  const expiry = new Date(dateValue);
+
+  const diff = expiry.getTime() - today.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 const styles = {
@@ -324,10 +442,19 @@ const styles = {
     marginBottom: "20px",
   },
 
+  searchInput: {
+    width: "100%",
+    padding: "14px 16px",
+    borderRadius: "14px",
+    border: "1px solid #cbd5e1",
+    fontSize: "16px",
+    outline: "none",
+  },
+
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: "1100px",
+    minWidth: "1250px",
   },
 
   th: {
@@ -340,6 +467,7 @@ const styles = {
   td: {
     borderBottom: "1px solid #e5e7eb",
     padding: "14px",
+    verticalAlign: "top",
   },
 
   greenButton: {
@@ -366,6 +494,18 @@ const styles = {
     marginBottom: "6px",
   },
 
+  purpleButton: {
+    background: "#7c3aed",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontWeight: "800",
+    cursor: "pointer",
+    marginRight: "8px",
+    marginBottom: "6px",
+  },
+
   redButton: {
     background: "#dc2626",
     color: "white",
@@ -376,5 +516,20 @@ const styles = {
     cursor: "pointer",
     marginRight: "8px",
     marginBottom: "6px",
+  },
+
+  okText: {
+    color: "#16a34a",
+    fontWeight: "800",
+  },
+
+  warningText: {
+    color: "#f59e0b",
+    fontWeight: "800",
+  },
+
+  expiredText: {
+    color: "#dc2626",
+    fontWeight: "800",
   },
 };
