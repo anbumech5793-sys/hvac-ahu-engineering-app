@@ -51,14 +51,20 @@ export default function ProfessionalAdminDashboard() {
 
     if (error) return setMessage(error.message);
 
-    await supabase.from("licenses").update({ status: "Inactive" }).eq("user_id", userId);
+    await supabase
+      .from("licenses")
+      .update({ status: "Inactive" })
+      .eq("user_id", userId);
 
     setMessage("User rejected and licenses deactivated.");
     await loadData();
   }
 
   async function blockUser(userId) {
-    const confirmBlock = window.confirm("Are you sure you want to block this user?");
+    const confirmBlock = window.confirm(
+      "Are you sure you want to block this user?"
+    );
+
     if (!confirmBlock) return;
 
     const { error } = await supabase
@@ -68,7 +74,10 @@ export default function ProfessionalAdminDashboard() {
 
     if (error) return setMessage(error.message);
 
-    await supabase.from("licenses").update({ status: "Inactive" }).eq("user_id", userId);
+    await supabase
+      .from("licenses")
+      .update({ status: "Inactive" })
+      .eq("user_id", userId);
 
     setMessage("User blocked and all licenses deactivated.");
     await loadData();
@@ -140,7 +149,10 @@ export default function ProfessionalAdminDashboard() {
 
   async function extendLicense(licenseId) {
     const license = licenses.find((item) => item.id === licenseId);
-    const baseDate = license?.expiry_date ? new Date(license.expiry_date) : new Date();
+
+    const baseDate = license?.expiry_date
+      ? new Date(license.expiry_date)
+      : new Date();
 
     baseDate.setMonth(baseDate.getMonth() + 1);
 
@@ -177,8 +189,27 @@ export default function ProfessionalAdminDashboard() {
     await loadData();
   }
 
+  async function deleteLicense(licenseId) {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this license permanently?"
+    );
+
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from("licenses")
+      .delete()
+      .eq("id", licenseId);
+
+    if (error) return setMessage(error.message);
+
+    setMessage("License deleted successfully.");
+    await loadData();
+  }
+
   const filteredProfiles = useMemo(() => {
     const q = searchText.trim().toLowerCase();
+
     if (!q) return profiles;
 
     return profiles.filter((user) => {
@@ -192,9 +223,18 @@ export default function ProfessionalAdminDashboard() {
   }, [profiles, searchText]);
 
   const totalUsers = profiles.length;
-  const pendingUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "pending").length;
-  const approvedUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "approved").length;
-  const blockedUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "blocked").length;
+
+  const pendingUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "pending"
+  ).length;
+
+  const approvedUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "approved"
+  ).length;
+
+  const blockedUsers = profiles.filter(
+    (u) => String(u.status || "").toLowerCase() === "blocked"
+  ).length;
 
   const activeLicenses = licenses.filter((l) =>
     ["active", "approved"].includes(String(l.status || "").toLowerCase())
@@ -206,6 +246,7 @@ export default function ProfessionalAdminDashboard() {
 
   const estimatedRevenue = licenses.reduce((total, item) => {
     const status = String(item.status || "").toLowerCase();
+
     if (status !== "active" && status !== "approved") return total;
 
     if (item.plan === "Monthly") return total + 999;
@@ -270,15 +311,24 @@ export default function ProfessionalAdminDashboard() {
                 <td style={styles.td}>{user.status || "-"}</td>
 
                 <td style={styles.td}>
-                  <button style={styles.greenButton} onClick={() => approveUser(user.id)}>
+                  <button
+                    style={styles.greenButton}
+                    onClick={() => approveUser(user.id)}
+                  >
                     Approve
                   </button>
 
-                  <button style={styles.orangeButton} onClick={() => rejectUser(user.id)}>
+                  <button
+                    style={styles.orangeButton}
+                    onClick={() => rejectUser(user.id)}
+                  >
                     Reject
                   </button>
 
-                  <button style={styles.redButton} onClick={() => blockUser(user.id)}>
+                  <button
+                    style={styles.redButton}
+                    onClick={() => blockUser(user.id)}
+                  >
                     Block
                   </button>
 
@@ -291,15 +341,24 @@ export default function ProfessionalAdminDashboard() {
                 </td>
 
                 <td style={styles.td}>
-                  <button style={styles.blueButton} onClick={() => createLicense(user.id, "Monthly")}>
+                  <button
+                    style={styles.blueButton}
+                    onClick={() => createLicense(user.id, "Monthly")}
+                  >
                     Monthly
                   </button>
 
-                  <button style={styles.blueButton} onClick={() => createLicense(user.id, "Yearly")}>
+                  <button
+                    style={styles.blueButton}
+                    onClick={() => createLicense(user.id, "Yearly")}
+                  >
                     Yearly
                   </button>
 
-                  <button style={styles.purpleButton} onClick={() => createLicense(user.id, "Enterprise")}>
+                  <button
+                    style={styles.purpleButton}
+                    onClick={() => createLicense(user.id, "Enterprise")}
+                  >
                     Enterprise
                   </button>
                 </td>
@@ -329,7 +388,10 @@ export default function ProfessionalAdminDashboard() {
           <tbody>
             {licenses.map((license) => {
               const user = profiles.find((p) => p.id === license.user_id);
-              const isInactive = String(license.status || "").toLowerCase() === "inactive";
+
+              const isInactive =
+                String(license.status || "").toLowerCase() === "inactive";
+
               const remainingDays = daysLeft(license.expiry_date);
 
               const expiryStyle =
@@ -354,7 +416,10 @@ export default function ProfessionalAdminDashboard() {
                   <td style={styles.td}>{license.max_projects}</td>
 
                   <td style={styles.td}>
-                    <button style={styles.greenButton} onClick={() => extendLicense(license.id)}>
+                    <button
+                      style={styles.greenButton}
+                      onClick={() => extendLicense(license.id)}
+                    >
                       Extend 1 Month
                     </button>
 
@@ -363,6 +428,13 @@ export default function ProfessionalAdminDashboard() {
                       onClick={() => toggleLicenseStatus(license)}
                     >
                       {isInactive ? "Activate" : "Deactivate"}
+                    </button>
+
+                    <button
+                      style={styles.darkRedButton}
+                      onClick={() => deleteLicense(license.id)}
+                    >
+                      Delete License
                     </button>
                   </td>
                 </tr>
