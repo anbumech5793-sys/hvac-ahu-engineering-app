@@ -23,9 +23,7 @@ export default function ProfessionalProjectDatabaseDashboard() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*");
+    const { data: profileData } = await supabase.from("profiles").select("*");
 
     if (projectError) {
       setMessage(projectError.message);
@@ -38,16 +36,9 @@ export default function ProfessionalProjectDatabaseDashboard() {
   }
 
   async function deleteProject(projectId) {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this project?"
-    );
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
 
-    if (!confirmDelete) return;
-
-    const { error } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", projectId);
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
 
     if (error) {
       setMessage(error.message);
@@ -66,7 +57,40 @@ export default function ProfessionalProjectDatabaseDashboard() {
       {};
 
     updateProjectData(savedData);
-    setMessage("Project loaded into design modules.");
+    setMessage("Project opened into design modules.");
+  }
+
+  function editProject(project) {
+    const savedData =
+      project.project_data?.projectData ||
+      project.input_data ||
+      project.project_data ||
+      {};
+
+    updateProjectData(savedData);
+    localStorage.setItem("editingProjectId", project.id);
+    setMessage("Project loaded for editing. Go to Project Input Dashboard and save changes.");
+  }
+
+  async function duplicateProject(project) {
+    const newProject = {
+      user_id: project.user_id,
+      project_name: `${project.project_name || "Project"} - Copy`,
+      client_name: project.client_name || "",
+      location: project.location || "",
+      application: project.application || "",
+      project_data: project.project_data || {},
+    };
+
+    const { error } = await supabase.from("projects").insert(newProject);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Project duplicated successfully.");
+    await loadProjects();
   }
 
   function exportCSV() {
@@ -79,7 +103,12 @@ export default function ProfessionalProjectDatabaseDashboard() {
       User: getUserEmail(p.user_id),
     }));
 
-    const headers = Object.keys(rows[0] || {});
+    if (rows.length === 0) {
+      setMessage("No projects available to export.");
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
     const csv = [
       headers.join(","),
       ...rows.map((row) =>
@@ -125,10 +154,10 @@ export default function ProfessionalProjectDatabaseDashboard() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>Professional Project Database Dashboard V2</h1>
+      <h1 style={styles.heading}>Professional Project Database Dashboard V3</h1>
 
       <p style={styles.subHeading}>
-        View, search, load, delete, and export saved HVAC AHU projects.
+        View, search, open, edit, duplicate, delete, and export saved HVAC AHU projects.
       </p>
 
       {message && <div style={styles.message}>{message}</div>}
@@ -195,24 +224,23 @@ export default function ProfessionalProjectDatabaseDashboard() {
                   <td style={styles.td}>{formatDate(project.created_at)}</td>
 
                   <td style={styles.td}>
-                    <button
-                      style={styles.greenButton}
-                      onClick={() => openProject(project)}
-                    >
+                    <button style={styles.greenButton} onClick={() => openProject(project)}>
                       Open
                     </button>
 
-                    <button
-                      style={styles.blueButton}
-                      onClick={() => setSelectedProject(project)}
-                    >
+                    <button style={styles.orangeButton} onClick={() => editProject(project)}>
+                      Edit
+                    </button>
+
+                    <button style={styles.purpleButton} onClick={() => duplicateProject(project)}>
+                      Duplicate
+                    </button>
+
+                    <button style={styles.blueButton} onClick={() => setSelectedProject(project)}>
                       View
                     </button>
 
-                    <button
-                      style={styles.redButton}
-                      onClick={() => deleteProject(project.id)}
-                    >
+                    <button style={styles.redButton} onClick={() => deleteProject(project.id)}>
                       Delete
                     </button>
                   </td>
@@ -227,10 +255,7 @@ export default function ProfessionalProjectDatabaseDashboard() {
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Project Details</h2>
 
-          <button
-            style={styles.redButton}
-            onClick={() => setSelectedProject(null)}
-          >
+          <button style={styles.redButton} onClick={() => setSelectedProject(null)}>
             Close Details
           </button>
 
@@ -359,7 +384,7 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: "1250px",
+    minWidth: "1350px",
   },
 
   th: {
@@ -409,6 +434,8 @@ const styles = {
 
   greenButton: button("#16a34a"),
   blueButton: button("#2563eb"),
+  orangeButton: button("#f97316"),
+  purpleButton: button("#7c3aed"),
   redButton: button("#dc2626"),
 };
 
