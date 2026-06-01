@@ -51,12 +51,56 @@ export default function ProfessionalAdminDashboard() {
 
     if (error) return setMessage(error.message);
 
-    await supabase
-      .from("licenses")
-      .update({ status: "Inactive" })
-      .eq("user_id", userId);
+    await supabase.from("licenses").update({ status: "Inactive" }).eq("user_id", userId);
 
     setMessage("User rejected and licenses deactivated.");
+    await loadData();
+  }
+
+  async function blockUser(userId) {
+    const confirmBlock = window.confirm("Are you sure you want to block this user?");
+    if (!confirmBlock) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ status: "blocked" })
+      .eq("id", userId);
+
+    if (error) return setMessage(error.message);
+
+    await supabase.from("licenses").update({ status: "Inactive" }).eq("user_id", userId);
+
+    setMessage("User blocked and all licenses deactivated.");
+    await loadData();
+  }
+
+  async function deleteUser(userId, email) {
+    if (email === "anbu.mech5793@gmail.com") {
+      setMessage("You cannot delete the main admin account.");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this user?\n\n${email}\n\nThis will delete profile and licenses.`
+    );
+
+    if (!confirmDelete) return;
+
+    const { error: licenseError } = await supabase
+      .from("licenses")
+      .delete()
+      .eq("user_id", userId);
+
+    if (licenseError) return setMessage(licenseError.message);
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (profileError) return setMessage(profileError.message);
+
+    setMessage("User deleted successfully.");
     await loadData();
   }
 
@@ -96,9 +140,7 @@ export default function ProfessionalAdminDashboard() {
 
   async function extendLicense(licenseId) {
     const license = licenses.find((item) => item.id === licenseId);
-    const baseDate = license?.expiry_date
-      ? new Date(license.expiry_date)
-      : new Date();
+    const baseDate = license?.expiry_date ? new Date(license.expiry_date) : new Date();
 
     baseDate.setMonth(baseDate.getMonth() + 1);
 
@@ -137,7 +179,6 @@ export default function ProfessionalAdminDashboard() {
 
   const filteredProfiles = useMemo(() => {
     const q = searchText.trim().toLowerCase();
-
     if (!q) return profiles;
 
     return profiles.filter((user) => {
@@ -151,18 +192,9 @@ export default function ProfessionalAdminDashboard() {
   }, [profiles, searchText]);
 
   const totalUsers = profiles.length;
-
-  const pendingUsers = profiles.filter(
-    (u) => String(u.status || "").toLowerCase() === "pending"
-  ).length;
-
-  const approvedUsers = profiles.filter(
-    (u) => String(u.status || "").toLowerCase() === "approved"
-  ).length;
-
-  const rejectedUsers = profiles.filter(
-    (u) => String(u.status || "").toLowerCase() === "rejected"
-  ).length;
+  const pendingUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "pending").length;
+  const approvedUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "approved").length;
+  const blockedUsers = profiles.filter((u) => String(u.status || "").toLowerCase() === "blocked").length;
 
   const activeLicenses = licenses.filter((l) =>
     ["active", "approved"].includes(String(l.status || "").toLowerCase())
@@ -171,12 +203,6 @@ export default function ProfessionalAdminDashboard() {
   const expiredLicenses = licenses.filter(
     (l) => l.expiry_date && new Date(l.expiry_date) < new Date()
   ).length;
-
-  const expiringSoon = licenses.filter((l) => {
-    if (!l.expiry_date) return false;
-    const days = daysLeft(l.expiry_date);
-    return days >= 0 && days <= 7;
-  }).length;
 
   const estimatedRevenue = licenses.reduce((total, item) => {
     const status = String(item.status || "").toLowerCase();
@@ -194,7 +220,7 @@ export default function ProfessionalAdminDashboard() {
       <h1 style={styles.heading}>Professional Admin Dashboard V2</h1>
 
       <p style={styles.subHeading}>
-        Manage users, approvals, licenses, expiry alerts, and estimated revenue.
+        Manage users, approvals, blocking, deletion, licenses, expiry, and revenue.
       </p>
 
       {message && <div style={styles.message}>{message}</div>}
@@ -203,10 +229,9 @@ export default function ProfessionalAdminDashboard() {
         <SummaryBox label="Total Users" value={totalUsers} />
         <SummaryBox label="Pending Users" value={pendingUsers} />
         <SummaryBox label="Approved Users" value={approvedUsers} />
-        <SummaryBox label="Rejected Users" value={rejectedUsers} />
+        <SummaryBox label="Blocked Users" value={blockedUsers} />
         <SummaryBox label="Active Licenses" value={activeLicenses} />
         <SummaryBox label="Expired Licenses" value={expiredLicenses} />
-        <SummaryBox label="Expiring Soon" value={expiringSoon} />
         <SummaryBox label="Estimated Revenue" value={`₹${estimatedRevenue}`} />
       </div>
 
@@ -245,40 +270,36 @@ export default function ProfessionalAdminDashboard() {
                 <td style={styles.td}>{user.status || "-"}</td>
 
                 <td style={styles.td}>
-                  <button
-                    style={styles.greenButton}
-                    onClick={() => approveUser(user.id)}
-                  >
+                  <button style={styles.greenButton} onClick={() => approveUser(user.id)}>
                     Approve
                   </button>
 
+                  <button style={styles.orangeButton} onClick={() => rejectUser(user.id)}>
+                    Reject
+                  </button>
+
+                  <button style={styles.redButton} onClick={() => blockUser(user.id)}>
+                    Block
+                  </button>
+
                   <button
-                    style={styles.redButton}
-                    onClick={() => rejectUser(user.id)}
+                    style={styles.darkRedButton}
+                    onClick={() => deleteUser(user.id, user.email)}
                   >
-                    Reject / Block
+                    Delete
                   </button>
                 </td>
 
                 <td style={styles.td}>
-                  <button
-                    style={styles.blueButton}
-                    onClick={() => createLicense(user.id, "Monthly")}
-                  >
+                  <button style={styles.blueButton} onClick={() => createLicense(user.id, "Monthly")}>
                     Monthly
                   </button>
 
-                  <button
-                    style={styles.blueButton}
-                    onClick={() => createLicense(user.id, "Yearly")}
-                  >
+                  <button style={styles.blueButton} onClick={() => createLicense(user.id, "Yearly")}>
                     Yearly
                   </button>
 
-                  <button
-                    style={styles.purpleButton}
-                    onClick={() => createLicense(user.id, "Enterprise")}
-                  >
+                  <button style={styles.purpleButton} onClick={() => createLicense(user.id, "Enterprise")}>
                     Enterprise
                   </button>
                 </td>
@@ -308,10 +329,9 @@ export default function ProfessionalAdminDashboard() {
           <tbody>
             {licenses.map((license) => {
               const user = profiles.find((p) => p.id === license.user_id);
-              const isInactive =
-                String(license.status || "").toLowerCase() === "inactive";
-
+              const isInactive = String(license.status || "").toLowerCase() === "inactive";
               const remainingDays = daysLeft(license.expiry_date);
+
               const expiryStyle =
                 remainingDays < 0
                   ? styles.expiredText
@@ -328,18 +348,13 @@ export default function ProfessionalAdminDashboard() {
                   <td style={styles.td}>{formatDate(license.expiry_date)}</td>
 
                   <td style={{ ...styles.td, ...expiryStyle }}>
-                    {remainingDays < 0
-                      ? "Expired"
-                      : `${remainingDays} days`}
+                    {remainingDays < 0 ? "Expired" : `${remainingDays} days`}
                   </td>
 
                   <td style={styles.td}>{license.max_projects}</td>
 
                   <td style={styles.td}>
-                    <button
-                      style={styles.greenButton}
-                      onClick={() => extendLicense(license.id)}
-                    >
+                    <button style={styles.greenButton} onClick={() => extendLicense(license.id)}>
                       Extend 1 Month
                     </button>
 
@@ -379,8 +394,8 @@ function daysLeft(dateValue) {
 
   const today = new Date();
   const expiry = new Date(dateValue);
-
   const diff = expiry.getTime() - today.getTime();
+
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
@@ -454,7 +469,7 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: "1250px",
+    minWidth: "1350px",
   },
 
   th: {
@@ -470,53 +485,12 @@ const styles = {
     verticalAlign: "top",
   },
 
-  greenButton: {
-    background: "#16a34a",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    fontWeight: "800",
-    cursor: "pointer",
-    marginRight: "8px",
-    marginBottom: "6px",
-  },
-
-  blueButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    fontWeight: "800",
-    cursor: "pointer",
-    marginRight: "8px",
-    marginBottom: "6px",
-  },
-
-  purpleButton: {
-    background: "#7c3aed",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    fontWeight: "800",
-    cursor: "pointer",
-    marginRight: "8px",
-    marginBottom: "6px",
-  },
-
-  redButton: {
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    fontWeight: "800",
-    cursor: "pointer",
-    marginRight: "8px",
-    marginBottom: "6px",
-  },
+  greenButton: button("#16a34a"),
+  blueButton: button("#2563eb"),
+  purpleButton: button("#7c3aed"),
+  orangeButton: button("#f97316"),
+  redButton: button("#dc2626"),
+  darkRedButton: button("#991b1b"),
 
   okText: {
     color: "#16a34a",
@@ -533,3 +507,17 @@ const styles = {
     fontWeight: "800",
   },
 };
+
+function button(bg) {
+  return {
+    background: bg,
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontWeight: "800",
+    cursor: "pointer",
+    marginRight: "8px",
+    marginBottom: "6px",
+  };
+}
