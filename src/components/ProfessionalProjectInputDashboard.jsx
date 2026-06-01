@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { useProject } from "../context/ProjectContext";
+import { supabase } from "../authEngine";
 
 const wallOptions = [
   { label: "Brick Wall - Standard", value: 1.8 },
@@ -24,18 +25,52 @@ const glassOptions = [
 
 export default function ProfessionalProjectInputDashboard() {
   const { projectData, updateProjectData, designResult } = useProject();
+  const [message, setMessage] = useState("");
 
   const handleChange = (e) => {
-    updateProjectData({
-      [e.target.name]: e.target.value,
-    });
+    updateProjectData({ [e.target.name]: e.target.value });
   };
 
   const handleSelectChange = (e) => {
-    updateProjectData({
-      [e.target.name]: Number(e.target.value),
-    });
+    updateProjectData({ [e.target.name]: Number(e.target.value) });
   };
+
+  async function saveProject() {
+    setMessage("Saving project...");
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData?.user) {
+      setMessage("Please login first.");
+      return;
+    }
+
+    if (!projectData.projectName || projectData.projectName.trim() === "") {
+      setMessage("Please enter Project Name before saving.");
+      return;
+    }
+
+    const payload = {
+      user_id: userData.user.id,
+      project_name: projectData.projectName,
+      client_name: projectData.clientName || "",
+      location: projectData.location || "",
+      application: projectData.roomName || "HVAC AHU",
+      project_data: {
+        projectData,
+        designResult,
+      },
+    };
+
+    const { error } = await supabase.from("projects").insert(payload);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Project saved successfully.");
+  }
 
   return (
     <div style={styles.page}>
@@ -45,6 +80,12 @@ export default function ProfessionalProjectInputDashboard() {
         Enter all project inputs once. Heat Load, CFM, AHU size, coil, blower,
         duct, BOM and GA drawing update automatically.
       </p>
+
+      {message && <div style={styles.message}>{message}</div>}
+
+      <button style={styles.saveButton} onClick={saveProject}>
+        Save Project
+      </button>
 
       <div style={styles.summaryCard}>
         <SummaryBox label="Required Air Flow" value={designResult.requiredCFM} unit="CFM" />
@@ -85,7 +126,6 @@ export default function ProfessionalProjectInputDashboard() {
           <InputField label="Indoor Temperature" name="indoorTemp" unit="°C" value={projectData.indoorTemp} onChange={handleChange} />
           <InputField label="Outdoor Temperature" name="outdoorTemp" unit="°C" value={projectData.outdoorTemp} onChange={handleChange} />
           <InputField label="Relative Humidity" name="relativeHumidity" unit="%" value={projectData.relativeHumidity} onChange={handleChange} />
-
         </div>
 
         <h2 style={styles.sectionTitle}>Construction Selection</h2>
@@ -174,6 +214,8 @@ const styles = {
   page: { minHeight: "100vh" },
   heading: { fontSize: "40px", fontWeight: "800", color: "#111827", marginBottom: "10px" },
   subHeading: { fontSize: "18px", color: "#374151", marginBottom: "22px" },
+  message: { background: "#fef3c7", padding: "14px", borderRadius: "12px", marginBottom: "18px", fontWeight: "800" },
+  saveButton: { background: "#16a34a", color: "white", border: "none", borderRadius: "14px", padding: "14px 24px", fontSize: "16px", fontWeight: "900", cursor: "pointer", marginBottom: "24px" },
   summaryCard: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" },
   summaryBox: { background: "#111827", color: "white", borderRadius: "18px", padding: "20px", display: "flex", flexDirection: "column", gap: "8px" },
   card: { background: "white", borderRadius: "20px", padding: "30px", boxShadow: "0 6px 20px rgba(0,0,0,0.15)", marginBottom: "30px" },
