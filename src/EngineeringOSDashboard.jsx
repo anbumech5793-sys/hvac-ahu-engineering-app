@@ -18,11 +18,21 @@ import ProfessionalProjectDatabaseDashboard from "./components/ProfessionalProje
 import ProfessionalAdminDashboard from "./components/ProfessionalAdminDashboard";
 import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDashboard";
 
-export default function EngineeringOSDashboard({ access }) {
+export default function EngineeringOSDashboard({ access, loginEmail }) {
   const [activeModule, setActiveModule] = useState("home");
 
-  const userRole = String(access?.profile?.role || "user").trim().toLowerCase();
-  const isAdmin = userRole === "admin";
+  const loggedEmail = String(
+    access?.profile?.email || loginEmail || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const userRole = String(access?.profile?.role || "user")
+    .trim()
+    .toLowerCase();
+
+  const isAdmin =
+    userRole === "admin" || loggedEmail === "anbu.mech5793@gmail.com";
 
   const modules = [
     ["home", "Home"],
@@ -52,38 +62,59 @@ export default function EngineeringOSDashboard({ access }) {
     switch (activeModule) {
       case "home":
         return <ProfessionalDashboardHome />;
+
       case "projectInput":
         return <ProfessionalProjectInputDashboard />;
+
       case "heatLoad":
         return <ProfessionalHeatLoadDashboard />;
+
       case "psychrometric":
         return <ProfessionalPsychrometricDashboard />;
+
       case "coilSelection":
         return <ProfessionalCoilSelectionDashboard />;
+
       case "blowerSelection":
         return <ProfessionalBlowerSelectionDashboard />;
+
       case "filterSelection":
         return <ProfessionalFilterSelectionDashboard />;
+
       case "ductSizing":
         return <ProfessionalDuctSizingDashboard />;
+
       case "ahuCosting":
         return <ProfessionalAHUCostingDashboard />;
+
       case "ahuLayout":
         return <ProfessionalAHULayoutDashboard />;
+
       case "bom":
         return <ProfessionalBOMDashboard />;
+
       case "projectReport":
         return <ProfessionalProjectReportDashboard />;
+
       case "export":
         return <ProfessionalExportDashboard />;
+
       case "validation":
         return <ProfessionalValidationDashboard />;
+
       case "projectDatabase":
         return <ProfessionalProjectDatabaseDashboard />;
+
       case "admin":
-        return isAdmin ? <ProfessionalAdminDashboard /> : <ProfessionalDashboardHome />;
+        return isAdmin ? (
+          <ProfessionalAdminDashboard />
+        ) : (
+          <ProfessionalDashboardHome />
+        );
+
       case "settings":
         return <ProfessionalSettingsDashboard />;
+
       default:
         return <ProfessionalDashboardHome />;
     }
@@ -96,6 +127,8 @@ export default function EngineeringOSDashboard({ access }) {
 
         <div style={styles.userRoleBox}>
           Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
+          <br />
+          Email: <strong>{loggedEmail || "unknown"}</strong>
         </div>
 
         <div className="engineering-menu" style={styles.menu}>
@@ -156,6 +189,8 @@ const styles = {
     marginBottom: "22px",
     color: "#ffcc00",
     fontSize: "14px",
+    lineHeight: "1.6",
+    wordBreak: "break-word",
   },
 
   menu: {

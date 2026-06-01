@@ -16,7 +16,7 @@ function App() {
   });
 
   function update(key, value) {
-    setForm({ ...form, [key]: value });
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function register() {
@@ -56,7 +56,11 @@ function App() {
       const dashboardModule = await import("./EngineeringOSDashboard");
 
       setDashboard(() => dashboardModule.default);
-      setAccess(result);
+      setAccess({
+        ...result,
+        loginEmail: form.email,
+      });
+
       setMessage("");
     } catch (error) {
       setMessage(error.message);
@@ -73,12 +77,17 @@ function App() {
   }
 
   if (access && Dashboard) {
+    const loggedEmail =
+      access?.profile?.email || access?.loginEmail || form.email || "User";
+
     return (
       <ProjectProvider>
         <div style={styles.appShell}>
           <div className="app-topbar" style={styles.topBar}>
             <div style={styles.brandSection}>
-              <div className="app-logo" style={styles.logoBox}>⚙️</div>
+              <div className="app-logo" style={styles.logoBox}>
+                ⚙️
+              </div>
 
               <div>
                 <div className="app-company-name" style={styles.companyName}>
@@ -95,12 +104,10 @@ function App() {
               <div style={styles.userCard}>
                 <div style={styles.userLabel}>Logged User</div>
 
-                <div style={styles.userName}>
-                  {access.profile?.email || form.email || "User"}
-                </div>
+                <div style={styles.userName}>{loggedEmail}</div>
 
                 <div style={styles.planText}>
-                  Plan: {access.license?.plan || "Active"}
+                  Plan: {access?.license?.plan || "Active"}
                 </div>
               </div>
 
@@ -111,7 +118,13 @@ function App() {
           </div>
 
           <div style={styles.dashboardArea}>
-            <Dashboard />
+            <Dashboard
+              access={access}
+              loginEmail={loggedEmail}
+              userEmail={loggedEmail}
+              profile={access?.profile}
+              license={access?.license}
+            />
           </div>
         </div>
       </ProjectProvider>
@@ -125,11 +138,17 @@ function App() {
         <p>Engineering OS Secure Login</p>
 
         <div className="authTabs">
-          <button className={mode === "login" ? "authActive" : ""} onClick={() => setMode("login")}>
+          <button
+            className={mode === "login" ? "authActive" : ""}
+            onClick={() => setMode("login")}
+          >
             Login
           </button>
 
-          <button className={mode === "register" ? "authActive" : ""} onClick={() => setMode("register")}>
+          <button
+            className={mode === "register" ? "authActive" : ""}
+            onClick={() => setMode("register")}
+          >
             Register
           </button>
         </div>
@@ -184,7 +203,8 @@ const styles = {
 
   topBar: {
     height: "92px",
-    background: "linear-gradient(90deg, #000000 0%, #050505 45%, #b30000 100%)",
+    background:
+      "linear-gradient(90deg, #000000 0%, #050505 45%, #b30000 100%)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
