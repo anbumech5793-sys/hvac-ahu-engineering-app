@@ -1,196 +1,261 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "../authEngine";
 import { useProject } from "../context/ProjectContext";
 
 export default function ProfessionalProjectDatabaseDashboard() {
-  const { projectData, designResult } = useProject();
+  const { updateProjectData } = useProject();
+
   const [projects, setProjects] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [message, setMessage] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     loadProjects();
   }, []);
 
-  const saveProject = () => {
-    const savedProjects = JSON.parse(localStorage.getItem("ahuProjects")) || [];
+  async function loadProjects() {
+    setMessage("Loading projects...");
 
-    const newProject = {
-      id: Date.now(),
-      savedAt: new Date().toLocaleString(),
+    const { data: projectData, error: projectError } = await supabase
+      .from("projects")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      projectName: projectData.projectName || "Untitled Project",
-      clientName: projectData.clientName || "-",
-      location: projectData.location || "-",
-      roomName: projectData.roomName || "-",
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*");
 
-      roomLength: projectData.roomLength,
-      roomWidth: projectData.roomWidth,
-      roomHeight: projectData.roomHeight,
-      roomSize: `${projectData.roomLength} × ${projectData.roomWidth} × ${projectData.roomHeight} m`,
+    if (projectError) {
+      setMessage(projectError.message);
+      return;
+    }
 
-      peopleCount: projectData.peopleCount,
-      lightingLoad: projectData.lightingLoad,
-      equipmentLoad: projectData.equipmentLoad,
+    setProjects(projectData || []);
+    setProfiles(profileData || []);
+    setMessage("");
+  }
 
-      indoorTemp: projectData.indoorTemp,
-      outdoorTemp: projectData.outdoorTemp,
-      relativeHumidity: projectData.relativeHumidity,
+  async function deleteProject(projectId) {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this project?"
+    );
 
-      floorArea: designResult.floorArea,
-      roomVolume: designResult.volume,
-      wallArea: designResult.wallArea,
-      roofArea: designResult.roofArea,
+    if (!confirmDelete) return;
 
-      indoorHumidityRatio: designResult.indoorHumidityRatio,
-      outdoorHumidityRatio: designResult.outdoorHumidityRatio,
-      indoorEnthalpy: designResult.indoorEnthalpy,
-      outdoorEnthalpy: designResult.outdoorEnthalpy,
-      indoorDewPoint: designResult.indoorDewPoint,
-      outdoorDewPoint: designResult.outdoorDewPoint,
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectId);
 
-      peopleSensible: designResult.peopleSensible,
-      peopleLatent: designResult.peopleLatent,
-      freshAirCFM: designResult.freshAirCFM,
-      freshAirSensible: designResult.freshAirSensible,
-      freshAirLatent: designResult.freshAirLatent,
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
 
-      totalSensible: designResult.totalSensible,
-      totalLatent: designResult.totalLatent,
-      totalHeatLoad: designResult.totalWatts,
-      totalKW: designResult.totalKW,
-      totalTR: designResult.totalTR,
-      designTR: designResult.designTR,
-      requiredCFM: designResult.requiredCFM,
-      SHR: designResult.SHR,
-      ACH: designResult.roomACH,
+    setMessage("Project deleted successfully.");
+    await loadProjects();
+  }
 
-      coilTR: designResult.coilTR,
-      coilKW: designResult.coilKW,
-      chilledWaterFlowLPM: designResult.chilledWaterFlowLPM,
+  function openProject(project) {
+    const savedData =
+      project.project_data?.projectData ||
+      project.input_data ||
+      project.project_data ||
+      {};
 
-      ahuLength: designResult.ahuLength,
-      ahuWidth: designResult.ahuWidth,
-      ahuHeight: designResult.ahuHeight,
-      ahuSize: `${designResult.ahuLength} × ${designResult.ahuWidth} × ${designResult.ahuHeight} mm`,
-    };
+    updateProjectData(savedData);
+    setMessage("Project loaded into design modules.");
+  }
 
-    savedProjects.unshift(newProject);
-    localStorage.setItem("ahuProjects", JSON.stringify(savedProjects));
-    setProjects(savedProjects);
-  };
+  function exportCSV() {
+    const rows = filteredProjects.map((p) => ({
+      Project_Name: p.project_name || "",
+      Client_Name: p.client_name || "",
+      Location: p.location || "",
+      Application: p.application || "",
+      Created_At: formatDate(p.created_at),
+      User: getUserEmail(p.user_id),
+    }));
 
-  const loadProjects = () => {
-    const savedProjects = JSON.parse(localStorage.getItem("ahuProjects")) || [];
-    setProjects(savedProjects);
-  };
+    const headers = Object.keys(rows[0] || {});
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        headers.map((h) => `"${String(row[h] || "").replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
 
-  const deleteProject = (id) => {
-    const updated = projects.filter((item) => item.id !== id);
-    localStorage.setItem("ahuProjects", JSON.stringify(updated));
-    setProjects(updated);
-  };
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
 
-  const clearAllProjects = () => {
-    localStorage.removeItem("ahuProjects");
-    setProjects([]);
-  };
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "hvac-projects.csv";
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+  }
+
+  function getUserEmail(userId) {
+    const user = profiles.find((p) => p.id === userId);
+    return user?.email || userId || "-";
+  }
+
+  const filteredProjects = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+
+    if (!q) return projects;
+
+    return projects.filter((p) => {
+      return (
+        String(p.project_name || "").toLowerCase().includes(q) ||
+        String(p.client_name || "").toLowerCase().includes(q) ||
+        String(p.location || "").toLowerCase().includes(q) ||
+        String(p.application || "").toLowerCase().includes(q) ||
+        String(getUserEmail(p.user_id) || "").toLowerCase().includes(q)
+      );
+    });
+  }, [projects, profiles, searchText]);
+
+  const totalProjects = projects.length;
+  const totalClients = new Set(projects.map((p) => p.client_name).filter(Boolean)).size;
+  const totalUsers = new Set(projects.map((p) => p.user_id).filter(Boolean)).size;
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>Automatic Project Database Dashboard</h1>
+      <h1 style={styles.heading}>Professional Project Database Dashboard V2</h1>
 
       <p style={styles.subHeading}>
-        Save complete HVAC AHU project history including heat load, psychrometric values,
-        SHR, ACH, coil data, chilled water flow, CFM, TR and AHU size.
+        View, search, load, delete, and export saved HVAC AHU projects.
       </p>
 
+      {message && <div style={styles.message}>{message}</div>}
+
       <div style={styles.summaryCard}>
-        <SummaryBox label="Saved Projects" value={projects.length} />
-        <SummaryBox label="Current Design TR" value={`${designResult.designTR || 0} TR`} />
-        <SummaryBox label="Current Air Flow" value={`${designResult.requiredCFM || 0} CFM`} />
-        <SummaryBox label="Current ACH" value={`${designResult.roomACH || 0} ACH`} />
-      </div>
-
-      <div style={styles.actionCard}>
-        <button style={styles.saveButton} onClick={saveProject}>
-          Save Current Project
-        </button>
-
-        <button style={styles.clearButton} onClick={clearAllProjects}>
-          Clear Database
-        </button>
+        <SummaryBox label="Total Projects" value={totalProjects} />
+        <SummaryBox label="Total Clients" value={totalClients} />
+        <SummaryBox label="Users With Projects" value={totalUsers} />
+        <SummaryBox label="Filtered Results" value={filteredProjects.length} />
       </div>
 
       <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>Automatic Project History</h2>
+        <h2 style={styles.sectionTitle}>Project Search</h2>
 
-        {projects.length === 0 ? (
-          <div style={styles.emptyBox}>No saved projects available.</div>
-        ) : (
-          <div style={styles.projectGrid}>
-            {projects.map((project) => (
-              <div key={project.id} style={styles.projectCard}>
-                <div style={styles.projectHeader}>
-                  <h3 style={styles.projectTitle}>{project.projectName}</h3>
+        <div style={styles.searchRow}>
+          <input
+            style={styles.searchInput}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search by project, client, location, application, or user email..."
+          />
 
-                  <button
-                    style={styles.deleteButton}
-                    onClick={() => deleteProject(project.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
+          <button style={styles.blueButton} onClick={loadProjects}>
+            Refresh
+          </button>
 
-                <ProjectRow label="Client" value={project.clientName} />
-                <ProjectRow label="Location" value={project.location} />
-                <ProjectRow label="Room" value={project.roomName} />
-                <ProjectRow label="Room Size" value={project.roomSize} />
-                <ProjectRow label="Room Volume" value={`${project.roomVolume} m³`} />
-                <ProjectRow label="Floor Area" value={`${project.floorArea} m²`} />
-
-                <ProjectRow label="People" value={`${project.peopleCount} Nos`} />
-                <ProjectRow label="Lighting" value={`${project.lightingLoad} W`} />
-                <ProjectRow label="Equipment" value={`${project.equipmentLoad} W`} />
-
-                <ProjectRow label="Indoor Temp" value={`${project.indoorTemp} °C`} />
-                <ProjectRow label="Outdoor Temp" value={`${project.outdoorTemp} °C`} />
-                <ProjectRow label="RH" value={`${project.relativeHumidity} %`} />
-
-                <ProjectRow
-                  label="Indoor Humidity Ratio"
-                  value={`${project.indoorHumidityRatio} g/kg`}
-                />
-                <ProjectRow
-                  label="Indoor Enthalpy"
-                  value={`${project.indoorEnthalpy} kJ/kg`}
-                />
-                <ProjectRow
-                  label="Indoor Dew Point"
-                  value={`${project.indoorDewPoint} °C`}
-                />
-
-                <ProjectRow label="Fresh Air" value={`${project.freshAirCFM} CFM`} />
-                <ProjectRow label="Total Sensible" value={`${project.totalSensible} W`} />
-                <ProjectRow label="Total Latent" value={`${project.totalLatent} W`} />
-                <ProjectRow label="Total Heat Load" value={`${project.totalHeatLoad} W`} />
-                <ProjectRow label="Cooling Load" value={`${project.totalTR} TR`} />
-                <ProjectRow label="Design Load" value={`${project.designTR} TR`} />
-                <ProjectRow label="Required Air Flow" value={`${project.requiredCFM} CFM`} />
-                <ProjectRow label="SHR" value={project.SHR} />
-                <ProjectRow label="ACH" value={`${project.ACH} ACH`} />
-
-                <ProjectRow label="Coil Capacity" value={`${project.coilTR} TR`} />
-                <ProjectRow label="Coil kW" value={`${project.coilKW} kW`} />
-                <ProjectRow
-                  label="Chilled Water Flow"
-                  value={`${project.chilledWaterFlowLPM} LPM`}
-                />
-
-                <ProjectRow label="AHU Size" value={project.ahuSize} />
-                <ProjectRow label="Saved At" value={project.savedAt} />
-              </div>
-            ))}
-          </div>
-        )}
+          <button style={styles.greenButton} onClick={exportCSV}>
+            Export CSV
+          </button>
+        </div>
       </div>
+
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Saved Projects</h2>
+
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>Project Name</th>
+              <th style={styles.th}>Client</th>
+              <th style={styles.th}>Location</th>
+              <th style={styles.th}>Application</th>
+              <th style={styles.th}>User</th>
+              <th style={styles.th}>Created</th>
+              <th style={styles.th}>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredProjects.length === 0 ? (
+              <tr>
+                <td style={styles.td} colSpan="7">
+                  No projects found.
+                </td>
+              </tr>
+            ) : (
+              filteredProjects.map((project) => (
+                <tr key={project.id}>
+                  <td style={styles.td}>{project.project_name || "-"}</td>
+                  <td style={styles.td}>{project.client_name || "-"}</td>
+                  <td style={styles.td}>{project.location || "-"}</td>
+                  <td style={styles.td}>{project.application || "-"}</td>
+                  <td style={styles.td}>{getUserEmail(project.user_id)}</td>
+                  <td style={styles.td}>{formatDate(project.created_at)}</td>
+
+                  <td style={styles.td}>
+                    <button
+                      style={styles.greenButton}
+                      onClick={() => openProject(project)}
+                    >
+                      Open
+                    </button>
+
+                    <button
+                      style={styles.blueButton}
+                      onClick={() => setSelectedProject(project)}
+                    >
+                      View
+                    </button>
+
+                    <button
+                      style={styles.redButton}
+                      onClick={() => deleteProject(project.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedProject && (
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Project Details</h2>
+
+          <button
+            style={styles.redButton}
+            onClick={() => setSelectedProject(null)}
+          >
+            Close Details
+          </button>
+
+          <div style={styles.detailsGrid}>
+            <DetailBox label="Project Name" value={selectedProject.project_name} />
+            <DetailBox label="Client Name" value={selectedProject.client_name} />
+            <DetailBox label="Location" value={selectedProject.location} />
+            <DetailBox label="Application" value={selectedProject.application} />
+            <DetailBox label="User" value={getUserEmail(selectedProject.user_id)} />
+            <DetailBox label="Created At" value={formatDate(selectedProject.created_at)} />
+          </div>
+
+          <h3 style={styles.jsonTitle}>Stored Project Data</h3>
+
+          <pre style={styles.jsonBox}>
+            {JSON.stringify(
+              selectedProject.project_data ||
+                selectedProject.input_data ||
+                selectedProject,
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
@@ -204,13 +269,18 @@ function SummaryBox({ label, value }) {
   );
 }
 
-function ProjectRow({ label, value }) {
+function DetailBox({ label, value }) {
   return (
-    <div style={styles.row}>
-      <strong>{label}</strong>
-      <span>{value ?? "-"}</span>
+    <div style={styles.detailBox}>
+      <span>{label}</span>
+      <strong>{value || "-"}</strong>
     </div>
   );
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString();
 }
 
 const styles = {
@@ -227,6 +297,14 @@ const styles = {
     fontSize: "18px",
     color: "#374151",
     marginBottom: "22px",
+  },
+
+  message: {
+    background: "#fef3c7",
+    padding: "14px",
+    borderRadius: "12px",
+    marginBottom: "18px",
+    fontWeight: "800",
   },
 
   summaryCard: {
@@ -246,39 +324,13 @@ const styles = {
     gap: "8px",
   },
 
-  actionCard: {
-    display: "flex",
-    gap: "16px",
-    marginBottom: "24px",
-  },
-
-  saveButton: {
-    background: "#16a34a",
-    color: "white",
-    border: "none",
-    borderRadius: "14px",
-    padding: "16px 22px",
-    fontSize: "16px",
-    fontWeight: "800",
-    cursor: "pointer",
-  },
-
-  clearButton: {
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "14px",
-    padding: "16px 22px",
-    fontSize: "16px",
-    fontWeight: "800",
-    cursor: "pointer",
-  },
-
   card: {
     background: "white",
     borderRadius: "20px",
     padding: "30px",
     boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+    marginBottom: "30px",
+    overflowX: "auto",
   },
 
   sectionTitle: {
@@ -289,56 +341,87 @@ const styles = {
     marginBottom: "20px",
   },
 
-  emptyBox: {
-    padding: "40px",
-    textAlign: "center",
+  searchRow: {
+    display: "flex",
+    gap: "12px",
+    alignItems: "center",
+  },
+
+  searchInput: {
+    flex: 1,
+    padding: "14px 16px",
+    borderRadius: "14px",
+    border: "1px solid #cbd5e1",
+    fontSize: "16px",
+    outline: "none",
+  },
+
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    minWidth: "1250px",
+  },
+
+  th: {
+    background: "#111827",
+    color: "white",
+    padding: "14px",
+    textAlign: "left",
+  },
+
+  td: {
+    borderBottom: "1px solid #e5e7eb",
+    padding: "14px",
+    verticalAlign: "top",
+  },
+
+  detailsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "16px",
+    marginTop: "20px",
+  },
+
+  detailBox: {
     background: "#f3f4f6",
     borderRadius: "14px",
-    fontSize: "18px",
-  },
-
-  projectGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "22px",
-  },
-
-  projectCard: {
-    background: "#f9fafb",
-    borderRadius: "18px",
-    padding: "22px",
-    border: "1px solid #d1d5db",
-  },
-
-  projectHeader: {
+    padding: "16px",
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "18px",
+    flexDirection: "column",
+    gap: "8px",
   },
 
-  projectTitle: {
-    fontSize: "22px",
-    fontWeight: "800",
-    color: "#111827",
+  jsonTitle: {
+    marginTop: "25px",
+    marginBottom: "12px",
+    fontSize: "20px",
   },
 
-  deleteButton: {
-    background: "#dc2626",
+  jsonBox: {
+    background: "#111827",
+    color: "white",
+    borderRadius: "16px",
+    padding: "20px",
+    overflowX: "auto",
+    fontSize: "13px",
+    maxHeight: "420px",
+  },
+
+  greenButton: button("#16a34a"),
+  blueButton: button("#2563eb"),
+  redButton: button("#dc2626"),
+};
+
+function button(bg) {
+  return {
+    background: bg,
     color: "white",
     border: "none",
     borderRadius: "10px",
     padding: "10px 14px",
+    fontWeight: "800",
     cursor: "pointer",
-    fontWeight: "700",
-  },
-
-  row: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "16px",
-    borderBottom: "1px solid #e5e7eb",
-    padding: "8px 0",
-    fontSize: "14px",
-  },
-};
+    marginRight: "8px",
+    marginBottom: "6px",
+  };
+}
