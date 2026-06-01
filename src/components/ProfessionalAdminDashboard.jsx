@@ -149,7 +149,6 @@ export default function ProfessionalAdminDashboard() {
 
   async function extendLicense(licenseId) {
     const license = licenses.find((item) => item.id === licenseId);
-
     const baseDate = license?.expiry_date
       ? new Date(license.expiry_date)
       : new Date();
@@ -167,6 +166,40 @@ export default function ProfessionalAdminDashboard() {
     if (error) return setMessage(error.message);
 
     setMessage("License extended by 1 month.");
+    await loadData();
+  }
+
+  async function reduceLicense(licenseId) {
+    const license = licenses.find((item) => item.id === licenseId);
+
+    if (!license?.expiry_date) {
+      setMessage("Expiry date not found.");
+      return;
+    }
+
+    const confirmReduce = window.confirm(
+      "Are you sure you want to reduce this license by 1 month?"
+    );
+
+    if (!confirmReduce) return;
+
+    const newExpiryDate = new Date(license.expiry_date);
+    newExpiryDate.setMonth(newExpiryDate.getMonth() - 1);
+
+    const newStatus =
+      newExpiryDate < new Date() ? "Inactive" : license.status || "Active";
+
+    const { error } = await supabase
+      .from("licenses")
+      .update({
+        status: newStatus,
+        expiry_date: newExpiryDate.toISOString(),
+      })
+      .eq("id", licenseId);
+
+    if (error) return setMessage(error.message);
+
+    setMessage("License reduced by 1 month.");
     await loadData();
   }
 
@@ -261,7 +294,8 @@ export default function ProfessionalAdminDashboard() {
       <h1 style={styles.heading}>Professional Admin Dashboard V2</h1>
 
       <p style={styles.subHeading}>
-        Manage users, approvals, blocking, deletion, licenses, expiry, and revenue.
+        Manage users, approvals, blocking, deletion, licenses, expiry, and
+        revenue.
       </p>
 
       {message && <div style={styles.message}>{message}</div>}
@@ -424,6 +458,13 @@ export default function ProfessionalAdminDashboard() {
                     </button>
 
                     <button
+                      style={styles.orangeButton}
+                      onClick={() => reduceLicense(license.id)}
+                    >
+                      Reduce 1 Month
+                    </button>
+
+                    <button
                       style={isInactive ? styles.greenButton : styles.redButton}
                       onClick={() => toggleLicenseStatus(license)}
                     >
@@ -541,7 +582,7 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: "1350px",
+    minWidth: "1450px",
   },
 
   th: {
