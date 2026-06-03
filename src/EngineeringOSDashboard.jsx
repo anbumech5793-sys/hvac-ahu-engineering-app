@@ -8,21 +8,24 @@ import ProfessionalCoilSelectionDashboard from "./components/ProfessionalCoilSel
 import ProfessionalBlowerSelectionDashboard from "./components/ProfessionalBlowerSelectionDashboard";
 import ProfessionalFilterSelectionDashboard from "./components/ProfessionalFilterSelectionDashboard";
 import ProfessionalDuctSizingDashboard from "./components/ProfessionalDuctSizingDashboard";
-import ProfessionalAHUCostingDashboard from "./components/ProfessionalAHUCostingDashboard";
 import ProfessionalAHULayoutDashboard from "./components/ProfessionalAHULayoutDashboard";
+import ProfessionalAHUGADrawingDashboard from "./components/ProfessionalAHUGADrawingDashboard";
 import ProfessionalBOMDashboard from "./components/ProfessionalBOMDashboard";
+import ProfessionalQuotationDashboard from "./components/ProfessionalQuotationDashboard";
 import ProfessionalProjectReportDashboard from "./components/ProfessionalProjectReportDashboard";
 import ProfessionalExportDashboard from "./components/ProfessionalExportDashboard";
 import ProfessionalValidationDashboard from "./components/ProfessionalValidationDashboard";
 import ProfessionalProjectDatabaseDashboard from "./components/ProfessionalProjectDatabaseDashboard";
+import ProfessionalAHUCostingDashboard from "./components/ProfessionalAHUCostingDashboard";
+import ProfessionalMaterialPriceDashboard from "./components/ProfessionalMaterialPriceDashboard";
 import ProfessionalAdminDashboard from "./components/ProfessionalAdminDashboard";
 import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDashboard";
 
-export default function EngineeringOSDashboard({ access, loginEmail }) {
+export default function EngineeringOSDashboard({ access, loginEmail, userEmail }) {
   const [activeModule, setActiveModule] = useState("home");
 
   const loggedEmail = String(
-    access?.profile?.email || loginEmail || ""
+    access?.profile?.email || loginEmail || userEmail || ""
   )
     .trim()
     .toLowerCase();
@@ -43,19 +46,22 @@ export default function EngineeringOSDashboard({ access, loginEmail }) {
     ["blowerSelection", "Blower Selection"],
     ["filterSelection", "Filter Selection"],
     ["ductSizing", "Duct Sizing"],
-    ["ahuCosting", "AHU Costing"],
-    ["ahuLayout", "AHU GA Drawing"],
+    ["ahuLayout", "AHU Layout"],
+    ["ahuGA", "AHU GA Drawing"],
     ["bom", "BOM Schedule"],
     ["projectReport", "Project Report"],
     ["export", "Export"],
     ["validation", "Validation"],
     ["projectDatabase", "Project Database"],
+    ["quotation", "Auto Quotation"],
+    ["ahuCosting", "AI AHU Costing"],
+    ...(isAdmin ? [["materialPrices", "Material Price Database"]] : []),
     ...(isAdmin ? [["admin", "Admin Panel"]] : []),
     ["settings", "Settings"],
   ];
 
   const renderModule = () => {
-    if (activeModule === "admin" && !isAdmin) {
+    if ((activeModule === "admin" || activeModule === "materialPrices") && !isAdmin) {
       return <ProfessionalDashboardHome />;
     }
 
@@ -84,14 +90,17 @@ export default function EngineeringOSDashboard({ access, loginEmail }) {
       case "ductSizing":
         return <ProfessionalDuctSizingDashboard />;
 
-      case "ahuCosting":
-        return <ProfessionalAHUCostingDashboard />;
-
       case "ahuLayout":
         return <ProfessionalAHULayoutDashboard />;
 
+      case "ahuGA":
+        return <ProfessionalAHUGADrawingDashboard />;
+
       case "bom":
         return <ProfessionalBOMDashboard />;
+
+      case "quotation":
+        return <ProfessionalQuotationDashboard />;
 
       case "projectReport":
         return <ProfessionalProjectReportDashboard />;
@@ -105,12 +114,14 @@ export default function EngineeringOSDashboard({ access, loginEmail }) {
       case "projectDatabase":
         return <ProfessionalProjectDatabaseDashboard />;
 
+      case "ahuCosting":
+        return <ProfessionalAHUCostingDashboard />;
+
+      case "materialPrices":
+        return isAdmin ? <ProfessionalMaterialPriceDashboard /> : <ProfessionalDashboardHome />;
+
       case "admin":
-        return isAdmin ? (
-          <ProfessionalAdminDashboard />
-        ) : (
-          <ProfessionalDashboardHome />
-        );
+        return isAdmin ? <ProfessionalAdminDashboard /> : <ProfessionalDashboardHome />;
 
       case "settings":
         return <ProfessionalSettingsDashboard />;

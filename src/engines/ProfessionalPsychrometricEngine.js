@@ -1,101 +1,183 @@
-export function runProfessionalPsychrometricEngine(data) {
-  const dbt = Number(data.dryBulbTemp);
-  const rh = Number(data.relativeHumidity);
-  const pressure = Number(data.atmosphericPressure);
+export function saturationPressureKPa(tempC) {
+  const T = Number(tempC);
+  return 0.61078 * Math.exp((17.2694 * T) / (T + 237.3));
+}
 
-  // Saturation pressure (kPa)
-  const pws =
-    0.61078 *
-    Math.exp((17.2694 * dbt) / (dbt + 237.3));
+export function humidityRatioFromRH(tempC, rhPercent, pressureKPa = 101.325) {
+  const rh = Math.max(0, Math.min(Number(rhPercent) / 100, 1));
+  const pws = saturationPressureKPa(tempC);
+  const pw = rh * pws;
 
-  // Partial vapor pressure
-  const pw = (rh / 100) * pws;
+  return 0.62198 * pw / (pressureKPa - pw);
+}
 
-  // Humidity ratio
-  const humidityRatio =
-    0.62198 * pw / (pressure - pw);
+export function enthalpyKJkg(tempC, humidityRatioKgKg) {
+  const T = Number(tempC);
+  const W = Number(humidityRatioKgKg);
 
-  // Enthalpy
-  const enthalpy =
-    1.006 * dbt +
-    humidityRatio * (2501 + 1.86 * dbt);
+  return 1.006 * T + W * (2501 + 1.86 * T);
+}
 
-  // Dew point
-  const alpha =
-    Math.log(pw / 0.61078);
+export function dewPointApprox(tempC, rhPercent) {
+  const T = Number(tempC);
+  const RH = Math.max(1, Math.min(Number(rhPercent), 100));
+  const a = 17.27;
+  const b = 237.7;
 
-  const dewPoint =
-    (237.3 * alpha) /
-    (17.2694 - alpha);
+  const alpha = (a * T) / (b + T) + Math.log(RH / 100);
+  return (b * alpha) / (a - alpha);
+}
 
-  // Wet bulb approximation
-  const wetBulb =
-    dbt *
-      Math.atan(
-        0.151977 *
-          Math.sqrt(rh + 8.313659)
-      ) +
-    Math.atan(dbt + rh) -
-    Math.atan(rh - 1.676331) +
-    0.00391838 *
-      Math.pow(rh, 1.5) *
-      Math.atan(0.023101 * rh) -
-    4.686035;
-
-  // Specific volume
-  const specificVolume =
-    (0.287042 *
-      (dbt + 273.15) *
-      (1 + 1.607858 * humidityRatio)) /
-    pressure;
-
-  // Air density
-  const airDensity =
-    1 / specificVolume;
-
-  // Apparatus dew point approximation
-  const adp = dbt - 8;
-
-  // SHF
-  const shf = 0.75;
-
-  // RSHF
-  const rshf = 0.80;
-
-  // GSHF
-  const gshf = 0.72;
+export function psychrometricPoint({
+  label,
+  tempC,
+  rhPercent,
+  pressureKPa = 101.325,
+}) {
+  const W = humidityRatioFromRH(tempC, rhPercent, pressureKPa);
+  const h = enthalpyKJkg(tempC, W);
+  const dp = dewPointApprox(tempC, rhPercent);
 
   return {
-    dryBulbTemp: dbt.toFixed(2),
-    wetBulbTemp: wetBulb.toFixed(2),
-    relativeHumidity: rh.toFixed(2),
-
-    saturationPressure: pws.toFixed(4),
-    vaporPressure: pw.toFixed(4),
-
-    humidityRatio:
-      (humidityRatio * 1000).toFixed(2),
-
-    enthalpy: enthalpy.toFixed(2),
-
-    dewPoint: dewPoint.toFixed(2),
-
-    specificVolume:
-      specificVolume.toFixed(3),
-
-    airDensity:
-      airDensity.toFixed(3),
-
-    apparatusDewPoint:
-      adp.toFixed(2),
-
-    sensibleHeatFactor:
-      shf.toFixed(2),
-
-    roomSHF:
-      rshf.toFixed(2),
-
-    grandSHF:
-      gshf.toFixed(2),
+    label,
+    dryBulb: round(tempC),
+    rh: round(rhPercent),
+    humidityRatio: round(W * 1000),
+    humidityRatioKgKg: W,
+    enthalpy: round(h),
+    dewPoint: round(dp),
   };
+}
+
+export function generateRHCurve(rhPercent, minTemp = 5, maxTemp = 50) {
+  const points = [];
+
+  for (let t = minTemp; t <= maxTemp; t += 1) {
+    const W = humidityRatioFromRH(t, rhPercent) * 1000;
+
+    points.push({
+      dryBulb: t,
+      humidityRatio: round(W),
+      rh: rhPercent,
+    });
+  }
+
+  return points;
+}
+
+export function generatePsychrometricProcess(projectData = {}, designResult = {}) {
+  const indoorTemp = number(designResult.indoorDBT || projectData.indoorTemp || 24);
+  const indoorRH = number(designResult.indoorRH || projectData.relativeHumidity || 50);
+
+  const outdoorTemp = number(designResult.outdoorDBT || projectData.outdoorTemp || 35);
+  const outdoorRH = number(designResult.outdoorRH || 60);
+
+  const supplyTemp = number(designResult.supplyDBT || designResult.coilADP || indoorTemp - 10);
+  const supplyRH = 90;
+
+  const freshAirRatio = 0.2;
+
+  const roomPoint = psychrometricPoint({
+    label: "Room Air",
+    tempC: indoorTemp,
+    rhPercent: indoorRH,
+  });
+
+  const outdoorPoint = psychrometricPoint({
+    label: "Outdoor Air",
+    tempC: outdoorTemp,
+    rhPercent: outdoorRH,
+  });
+
+  const mixedTemp = outdoorTemp * freshAirRatio + indoorTemp * (1 - freshAirRatio);
+  const mixedW =
+    outdoorPoint.humidityRatioKgKg * freshAirRatio +
+    roomPoint.humidityRatioKgKg * (1 - freshAirRatio);
+
+  const mixedPoint = {
+    label: "Mixed Air",
+    dryBulb: round(mixedTemp),
+    humidityRatio: round(mixedW * 1000),
+    humidityRatioKgKg: mixedW,
+    enthalpy: round(enthalpyKJkg(mixedTemp, mixedW)),
+    rh: "-",
+    dewPoint: "-",
+  };
+
+  const supplyPoint = psychrometricPoint({
+    label: "Supply / Coil Leaving",
+    tempC: supplyTemp,
+    rhPercent: supplyRH,
+  });
+
+  return {
+    rhCurves: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((rh) => ({
+      rh,
+      points: generateRHCurve(rh),
+    })),
+
+    processPoints: [
+      outdoorPoint,
+      mixedPoint,
+      supplyPoint,
+      roomPoint,
+    ],
+
+    roomPoint,
+    outdoorPoint,
+    mixedPoint,
+    supplyPoint,
+  };
+}
+
+export function fanCurvePoints(requiredCFM = 1500, staticPressure = 75) {
+  const cfm = number(requiredCFM || 1500);
+  const sp = number(staticPressure || 75);
+
+  const points = [];
+
+  for (let ratio = 0.3; ratio <= 1.5; ratio += 0.1) {
+    const airflow = cfm * ratio;
+    const pressure = Math.max(sp * (1.75 - 0.55 * ratio * ratio), sp * 0.25);
+    const bhp = Math.max((airflow * pressure) / 6356 / 0.65, 0);
+
+    points.push({
+      airflow: round(airflow),
+      staticPressure: round(pressure),
+      bhp: round(bhp),
+    });
+  }
+
+  return points;
+}
+
+export function systemCurvePoints(requiredCFM = 1500, staticPressure = 75) {
+  const cfm = number(requiredCFM || 1500);
+  const sp = number(staticPressure || 75);
+
+  const points = [];
+
+  for (let ratio = 0.2; ratio <= 1.5; ratio += 0.1) {
+    const airflow = cfm * ratio;
+    const pressure = sp * ratio * ratio;
+
+    points.push({
+      airflow: round(airflow),
+      staticPressure: round(pressure),
+    });
+  }
+
+  return points;
+}
+
+function number(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function round(value) {
+  return Number(number(value).toFixed(2));
+}
+export function runProfessionalPsychrometricEngine(projectData = {}) {
+  return generatePsychrometricProcess(projectData, {});
 }

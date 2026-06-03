@@ -1,183 +1,188 @@
-export function runMasterAHUDesignEngine(data) {
-  const L = num(data.roomLength, 10);
-  const W = num(data.roomWidth, 8);
-  const H = num(data.roomHeight, 3);
+export function runMasterAHUDesignEngine(projectData = {}) {
+  const roomLength = n(projectData.roomLength, 10);
+  const roomWidth = n(projectData.roomWidth, 8);
+  const roomHeight = n(projectData.roomHeight, 3);
 
-  const people = num(data.peopleCount, 0);
-  const lightingW = num(data.lightingLoad, 0);
-  const equipmentW = num(data.equipmentLoad, 0);
+  const peopleCount = n(projectData.peopleCount, 10);
+  const lightingLoad = n(projectData.lightingLoad, 1200);
+  const equipmentLoad = n(projectData.equipmentLoad, 2500);
 
-  const indoorDBT = num(data.indoorTemp, 24);
-  const outdoorDBT = num(data.outdoorTemp, 35);
-  const indoorRH = num(data.relativeHumidity, 55);
-  const outdoorRH = num(data.outdoorRH, 60);
+  const indoorTemp = n(projectData.indoorTemp, 24);
+  const outdoorTemp = n(projectData.outdoorTemp, 35);
+  const relativeHumidity = n(projectData.relativeHumidity, 55);
 
-  const wallU = num(data.wallU, 1.8);
-  const roofU = num(data.roofU, 1.5);
-  const glassU = num(data.glassU, 5.7);
-  const glassArea = num(data.glassArea, 0);
-  const solarFactor = num(data.solarFactor, 180);
+  const wallU = n(projectData.wallU, 1.8);
+  const roofU = n(projectData.roofU, 1.5);
+  const glassU = n(projectData.glassU, 5.7);
+  const glassArea = n(projectData.glassArea, 0);
+  const solarFactor = n(projectData.solarFactor, 180);
 
-  const safetyFactor = num(data.safetyFactor, 10);
-  const cfmPerTR = num(data.cfmPerTR, 400);
-  const freshAirPerPerson = num(data.freshAirPerPerson, 20);
+  const cfmPerTR = n(projectData.cfmPerTR, 400);
+  const safetyFactor = n(projectData.safetyFactor, 1.15);
+  const fanEfficiency = n(projectData.defaultFanEfficiency, 65) / 100;
+  const staticPressure = n(projectData.staticPressure, 75);
 
-  const floorArea = L * W;
-  const volume = L * W * H;
-  const wallArea = 2 * (L + W) * H;
+  const floorArea = roomLength * roomWidth;
+  const volume = floorArea * roomHeight;
+  const wallArea = 2 * (roomLength + roomWidth) * roomHeight;
   const roofArea = floorArea;
 
-  const deltaT = Math.max(outdoorDBT - indoorDBT, 0);
+  const deltaT = Math.max(outdoorTemp - indoorTemp, 1);
 
-  const indoor = psychrometric(indoorDBT, indoorRH);
-  const outdoor = psychrometric(outdoorDBT, outdoorRH);
+  const peopleSensible = peopleCount * 75;
+  const peopleLatent = peopleCount * 55;
 
-  const peopleSensible = people * 75;
-  const peopleLatent = people * 55;
+  const wallLoad = wallArea * wallU * deltaT;
+  const roofLoad = roofArea * roofU * deltaT;
+  const glassLoad = glassArea * glassU * deltaT + glassArea * solarFactor;
 
-  const wallLoad = wallU * wallArea * deltaT;
-  const roofLoad = roofU * roofArea * deltaT;
-  const glassTransmissionLoad = glassU * glassArea * deltaT;
-  const solarLoad = glassArea * solarFactor;
-
-  const freshAirCFM = people * freshAirPerPerson;
-  const freshAirM3s = freshAirCFM * 0.000471947;
-
-  const freshAirSensible = 1.2 * freshAirM3s * 1006 * deltaT;
-
-  const humidityDifference =
-    Math.max(outdoor.humidityRatioKgKg - indoor.humidityRatioKgKg, 0);
-
-  const freshAirLatent =
-    1.2 * freshAirM3s * 2501000 * humidityDifference;
+  const freshAirCFM = Math.max(peopleCount * 15, n(projectData.freshAirCFM, 0));
+  const freshAirSensible = 1.08 * freshAirCFM * (deltaT * 1.8);
+  const freshAirLatent = freshAirCFM * 0.68 * Math.max(relativeHumidity - 50, 0);
 
   const totalSensible =
     peopleSensible +
-    lightingW +
-    equipmentW +
+    lightingLoad +
+    equipmentLoad +
     wallLoad +
     roofLoad +
-    glassTransmissionLoad +
-    solarLoad +
+    glassLoad +
     freshAirSensible;
 
   const totalLatent = peopleLatent + freshAirLatent;
 
   const totalWatts = totalSensible + totalLatent;
   const totalTR = totalWatts / 3517;
-  const designTR = totalTR * (1 + safetyFactor / 100);
+  const designTR = totalTR * safetyFactor;
 
-  const requiredCFM = designTR * cfmPerTR;
+  const requiredCFM = Math.max(designTR * cfmPerTR, volume * 6 / 60 * 35.3147);
+  const roomACH = (requiredCFM * 1.699) / Math.max(volume, 1);
 
-  const SHR =
-    totalWatts > 0 ? totalSensible / totalWatts : 0;
+  const SHR = totalSensible / Math.max(totalWatts, 1);
 
-  const roomACH =
-    volume > 0 ? (requiredCFM * 1.699) / volume : 0;
-
-  const ahuLength = Math.round(2500 + designTR * 80);
-  const ahuWidth = Math.round(1000 + requiredCFM * 0.035);
-  const ahuHeight = Math.round(1200 + requiredCFM * 0.04);
-
-  const coilTR = designTR;
+  const coilTR = designTR * 1.05;
   const coilKW = coilTR * 3.517;
+  const chilledWaterFlowLPM = (coilTR * 3024) / (500 * 10) * 3.785;
 
-  const chilledWaterDeltaT = 5;
-  const chilledWaterFlowLPM =
-    (coilKW * 860) / (chilledWaterDeltaT * 60);
+  const blowerCFM = requiredCFM * 1.05;
+  const motorHP = (blowerCFM * staticPressure) / (6356 * Math.max(fanEfficiency, 0.01));
+  const selectedMotorHP = selectMotorHP(motorHP);
+  const motorKW = selectedMotorHP * 0.746;
 
-  const blowerCFM = requiredCFM;
   const filterCFM = requiredCFM;
   const ductCFM = requiredCFM;
 
+  const ahuLength = Math.round(2200 + requiredCFM * 0.45);
+  const ahuWidth = Math.round(750 + Math.sqrt(requiredCFM) * 12);
+  const ahuHeight = Math.round(900 + Math.sqrt(requiredCFM) * 10);
+
+  const indoorDBT = indoorTemp;
+  const outdoorDBT = outdoorTemp;
+  const indoorRH = relativeHumidity;
+  const outdoorRH = n(projectData.outdoorRH, 60);
+
+  const indoorHumidityRatio = humidityRatio(indoorDBT, indoorRH);
+  const outdoorHumidityRatio = humidityRatio(outdoorDBT, outdoorRH);
+
+  const indoorEnthalpy = enthalpy(indoorDBT, indoorHumidityRatio / 1000);
+  const outdoorEnthalpy = enthalpy(outdoorDBT, outdoorHumidityRatio / 1000);
+  const indoorDewPoint = dewPointApprox(indoorDBT, indoorRH);
+
+  const supplyDBT = Math.max(indoorDBT - 10, 12);
+  const coilADP = Math.max(supplyDBT - 2, 10);
+
   return {
-    floorArea: round(floorArea),
-    volume: round(volume),
-    wallArea: round(wallArea),
-    roofArea: round(roofArea),
+    floorArea: r(floorArea),
+    volume: r(volume),
+    wallArea: r(wallArea),
+    roofArea: r(roofArea),
 
-    indoorDBT: round(indoorDBT),
-    outdoorDBT: round(outdoorDBT),
-    indoorRH: round(indoorRH),
-    outdoorRH: round(outdoorRH),
-    deltaT: round(deltaT),
+    indoorDBT: r(indoorDBT),
+    outdoorDBT: r(outdoorDBT),
+    indoorRH: r(indoorRH),
+    outdoorRH: r(outdoorRH),
+    indoorHumidityRatio: r(indoorHumidityRatio),
+    outdoorHumidityRatio: r(outdoorHumidityRatio),
+    indoorEnthalpy: r(indoorEnthalpy),
+    outdoorEnthalpy: r(outdoorEnthalpy),
+    indoorDewPoint: r(indoorDewPoint),
+    supplyDBT: r(supplyDBT),
+    coilADP: r(coilADP),
 
-    indoorHumidityRatio: round(indoor.humidityRatioGkg),
-    outdoorHumidityRatio: round(outdoor.humidityRatioGkg),
-    indoorEnthalpy: round(indoor.enthalpy),
-    outdoorEnthalpy: round(outdoor.enthalpy),
-    indoorDewPoint: round(indoor.dewPoint),
-    outdoorDewPoint: round(outdoor.dewPoint),
+    peopleSensible: r(peopleSensible),
+    peopleLatent: r(peopleLatent),
+    lightingLoad: r(lightingLoad),
+    equipmentLoad: r(equipmentLoad),
+    wallLoad: r(wallLoad),
+    roofLoad: r(roofLoad),
+    glassLoad: r(glassLoad),
+    freshAirSensible: r(freshAirSensible),
+    freshAirLatent: r(freshAirLatent),
 
-    peopleSensible: round(peopleSensible),
-    peopleLatent: round(peopleLatent),
-    lightingLoad: round(lightingW),
-    equipmentLoad: round(equipmentW),
-    wallLoad: round(wallLoad),
-    roofLoad: round(roofLoad),
-    glassTransmissionLoad: round(glassTransmissionLoad),
-    solarLoad: round(solarLoad),
-    freshAirCFM: round(freshAirCFM),
-    freshAirSensible: round(freshAirSensible),
-    freshAirLatent: round(freshAirLatent),
+    totalSensible: r(totalSensible),
+    totalLatent: r(totalLatent),
+    totalWatts: r(totalWatts),
+    totalTR: r(totalTR),
+    designTR: r(designTR),
+    SHR: r(SHR),
 
-    totalSensible: round(totalSensible),
-    totalLatent: round(totalLatent),
-    totalWatts: round(totalWatts),
-    totalKW: round(totalWatts / 1000),
-    totalTR: round(totalTR),
-    designTR: round(designTR),
-    requiredCFM: round(requiredCFM),
-    SHR: round(SHR),
-    roomACH: round(roomACH),
+    freshAirCFM: r(freshAirCFM),
+    requiredCFM: r(requiredCFM),
+    roomACH: r(roomACH),
+    cfmPerTR: r(cfmPerTR),
+
+    coilTR: r(coilTR),
+    coilKW: r(coilKW),
+    chilledWaterFlowLPM: r(chilledWaterFlowLPM),
+
+    blowerCFM: r(blowerCFM),
+    staticPressure: r(staticPressure),
+    motorHP: r(motorHP),
+    selectedMotorHP: r(selectedMotorHP),
+    motorKW: r(motorKW),
+
+    filterCFM: r(filterCFM),
+    ductCFM: r(ductCFM),
 
     ahuLength,
     ahuWidth,
     ahuHeight,
-
-    coilTR: round(coilTR),
-    coilKW: round(coilKW),
-    chilledWaterFlowLPM: round(chilledWaterFlowLPM),
-
-    blowerCFM: round(blowerCFM),
-    filterCFM: round(filterCFM),
-    ductCFM: round(ductCFM),
   };
 }
 
-function psychrometric(dbt, rh) {
-  const pressure = 101.325;
-
-  const pws =
-    0.61078 * Math.exp((17.2694 * dbt) / (dbt + 237.3));
-
-  const pw = (rh / 100) * pws;
-
-  const humidityRatioKgKg =
-    (0.62198 * pw) / (pressure - pw);
-
-  const humidityRatioGkg = humidityRatioKgKg * 1000;
-
-  const enthalpy =
-    1.006 * dbt + humidityRatioKgKg * (2501 + 1.86 * dbt);
-
-  const dewPoint =
-    (237.3 * Math.log(pw / 0.61078)) /
-    (17.2694 - Math.log(pw / 0.61078));
-
-  return {
-    humidityRatioKgKg,
-    humidityRatioGkg,
-    enthalpy,
-    dewPoint,
-  };
+function n(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
 }
 
-function num(value, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
+function r(value) {
+  return Number(n(value).toFixed(2));
 }
 
-function round(value) {
-  return Number(Number(value || 0).toFixed(2));
+function selectMotorHP(hp) {
+  const standard = [0.5, 1, 1.5, 2, 3, 5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 75, 100];
+  return standard.find((x) => x >= hp) || Math.ceil(hp);
+}
+
+function saturationPressureKPa(tempC) {
+  return 0.61078 * Math.exp((17.2694 * tempC) / (tempC + 237.3));
+}
+
+function humidityRatio(tempC, rhPercent, pressureKPa = 101.325) {
+  const rh = Math.max(0, Math.min(rhPercent / 100, 1));
+  const pws = saturationPressureKPa(tempC);
+  const pw = rh * pws;
+  return (0.62198 * pw) / (pressureKPa - pw) * 1000;
+}
+
+function enthalpy(tempC, humidityRatioKgKg) {
+  return 1.006 * tempC + humidityRatioKgKg * (2501 + 1.86 * tempC);
+}
+
+function dewPointApprox(tempC, rhPercent) {
+  const RH = Math.max(1, Math.min(rhPercent, 100));
+  const a = 17.27;
+  const b = 237.7;
+  const alpha = (a * tempC) / (b + tempC) + Math.log(RH / 100);
+  return (b * alpha) / (a - alpha);
 }
