@@ -11,11 +11,7 @@ import {
   Legend,
 } from "recharts";
 
-import {
-  generatePsychrometricProcess,
-  fanCurvePoints,
-  systemCurvePoints,
-} from "../engines/professionalPsychrometricEngine";
+import { generatePsychrometricProcess, fanCurvePoints, systemCurvePoints } from "../engines/ProfessionalPsychrometricEngine";
 
 export default function ProfessionalPsychrometricASHRAEChart({
   projectData = {},
