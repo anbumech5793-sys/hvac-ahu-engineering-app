@@ -23,20 +23,13 @@ import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDash
 
 export default function EngineeringOSDashboard({ access, loginEmail, userEmail }) {
   const [activeModule, setActiveModule] = useState("home");
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  const loggedEmail = String(
-    access?.profile?.email || loginEmail || userEmail || ""
-  )
+  const loggedEmail = String(access?.profile?.email || loginEmail || userEmail || "")
     .trim()
     .toLowerCase();
 
-  const userRole = String(access?.profile?.role || "user")
-    .trim()
-    .toLowerCase();
-
-  const isAdmin =
-    userRole === "admin" || loggedEmail === "anbu.mech5793@gmail.com";
+  const userRole = String(access?.profile?.role || "user").trim().toLowerCase();
+  const isAdmin = userRole === "admin" || loggedEmail === "anbu.mech5793@gmail.com";
 
   const modules = [
     ["home", "Home"],
@@ -61,79 +54,33 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
     ["settings", "Settings"],
   ];
 
-  const handleMenuClick = (key) => {
-    setActiveModule(key);
-    setMenuOpen(false);
-  };
-
   const renderModule = () => {
     if ((activeModule === "admin" || activeModule === "materialPrices") && !isAdmin) {
       return <ProfessionalDashboardHome />;
     }
 
     switch (activeModule) {
-      case "home":
-        return <ProfessionalDashboardHome />;
-
-      case "projectInput":
-        return <ProfessionalProjectInputDashboard />;
-
-      case "heatLoad":
-        return <ProfessionalHeatLoadDashboard />;
-
-      case "psychrometric":
-        return <ProfessionalPsychrometricDashboard />;
-
-      case "coilSelection":
-        return <ProfessionalCoilSelectionDashboard />;
-
-      case "blowerSelection":
-        return <ProfessionalBlowerSelectionDashboard />;
-
-      case "filterSelection":
-        return <ProfessionalFilterSelectionDashboard />;
-
-      case "ductSizing":
-        return <ProfessionalDuctSizingDashboard />;
-
-      case "ahuLayout":
-        return <ProfessionalAHULayoutDashboard />;
-
-      case "ahuGA":
-        return <ProfessionalAHUGADrawingDashboard />;
-
-      case "bom":
-        return <ProfessionalBOMDashboard />;
-
-      case "quotation":
-        return <ProfessionalQuotationDashboard />;
-
-      case "projectReport":
-        return <ProfessionalProjectReportDashboard />;
-
-      case "export":
-        return <ProfessionalExportDashboard />;
-
-      case "validation":
-        return <ProfessionalValidationDashboard />;
-
-      case "projectDatabase":
-        return <ProfessionalProjectDatabaseDashboard />;
-
-      case "ahuCosting":
-        return <ProfessionalAHUCostingDashboard />;
-
-      case "materialPrices":
-        return isAdmin ? <ProfessionalMaterialPriceDashboard /> : <ProfessionalDashboardHome />;
-
-      case "admin":
-        return isAdmin ? <ProfessionalAdminDashboard /> : <ProfessionalDashboardHome />;
-
-      case "settings":
-        return <ProfessionalSettingsDashboard />;
-
-      default:
-        return <ProfessionalDashboardHome />;
+      case "home": return <ProfessionalDashboardHome />;
+      case "projectInput": return <ProfessionalProjectInputDashboard />;
+      case "heatLoad": return <ProfessionalHeatLoadDashboard />;
+      case "psychrometric": return <ProfessionalPsychrometricDashboard />;
+      case "coilSelection": return <ProfessionalCoilSelectionDashboard />;
+      case "blowerSelection": return <ProfessionalBlowerSelectionDashboard />;
+      case "filterSelection": return <ProfessionalFilterSelectionDashboard />;
+      case "ductSizing": return <ProfessionalDuctSizingDashboard />;
+      case "ahuLayout": return <ProfessionalAHULayoutDashboard />;
+      case "ahuGA": return <ProfessionalAHUGADrawingDashboard />;
+      case "bom": return <ProfessionalBOMDashboard />;
+      case "quotation": return <ProfessionalQuotationDashboard />;
+      case "projectReport": return <ProfessionalProjectReportDashboard />;
+      case "export": return <ProfessionalExportDashboard />;
+      case "validation": return <ProfessionalValidationDashboard />;
+      case "projectDatabase": return <ProfessionalProjectDatabaseDashboard />;
+      case "ahuCosting": return <ProfessionalAHUCostingDashboard />;
+      case "materialPrices": return isAdmin ? <ProfessionalMaterialPriceDashboard /> : <ProfessionalDashboardHome />;
+      case "admin": return isAdmin ? <ProfessionalAdminDashboard /> : <ProfessionalDashboardHome />;
+      case "settings": return <ProfessionalSettingsDashboard />;
+      default: return <ProfessionalDashboardHome />;
     }
   };
 
@@ -141,22 +88,17 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
     <>
       <style>{responsiveCSS}</style>
 
-      <div className="engineering-mobile-topbar">
-        <button
-          className="engineering-mobile-menu-btn"
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          {menuOpen ? "Close Menu" : "Open Menu"}
-        </button>
-
-        <strong>Apfel Globus Engineering OS</strong>
+      <div className="mobile-module-bar">
+        <label>Module</label>
+        <select value={activeModule} onChange={(e) => setActiveModule(e.target.value)}>
+          {modules.map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="engineering-layout" style={styles.app}>
-        <aside
-          className={`engineering-sidebar ${menuOpen ? "mobile-open" : ""}`}
-          style={styles.sidebar}
-        >
+        <aside className="engineering-sidebar" style={styles.sidebar}>
           <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
 
           <div style={styles.userRoleBox}>
@@ -169,7 +111,7 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
             {modules.map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => handleMenuClick(key)}
+                onClick={() => setActiveModule(key)}
                 style={{
                   ...styles.menuButton,
                   ...(activeModule === key ? styles.activeButton : {}),
@@ -190,122 +132,121 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
 }
 
 const responsiveCSS = `
-.engineering-mobile-topbar {
+.mobile-module-bar {
   display: none;
 }
 
 @media (max-width: 768px) {
-  body {
+  html, body, #root {
+    width: 100% !important;
+    max-width: 100% !important;
     overflow-x: hidden !important;
   }
 
-  .engineering-mobile-topbar {
+  .engineering-sidebar {
+    display: none !important;
+  }
+
+  .mobile-module-bar {
     display: flex !important;
     position: sticky;
     top: 0;
     z-index: 9999;
     background: #050505;
-    color: white;
     padding: 12px;
-    align-items: center;
-    justify-content: space-between;
     gap: 10px;
-    border-bottom: 2px solid #333;
+    align-items: center;
+    border-bottom: 2px solid #ffcc00;
   }
 
-  .engineering-mobile-menu-btn {
-    background: #e60000;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 10px 14px;
+  .mobile-module-bar label {
+    color: #ffcc00;
     font-weight: 900;
-    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .mobile-module-bar select {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: 2px solid #ffcc00;
+    font-weight: 900;
+    font-size: 15px;
+    background: white;
+    color: #111827;
   }
 
   .engineering-layout {
-    flex-direction: column !important;
+    display: block !important;
     height: auto !important;
     min-height: 100vh !important;
-    overflow: visible !important;
-  }
-
-  .engineering-sidebar {
     width: 100% !important;
-    height: auto !important;
-    max-height: 0 !important;
-    overflow: hidden !important;
-    padding: 0 16px !important;
-    border-right: none !important;
-    border-bottom: 2px solid #333 !important;
-    transition: max-height 0.25s ease, padding 0.25s ease !important;
-  }
-
-  .engineering-sidebar.mobile-open {
-    max-height: 70vh !important;
-    overflow-y: auto !important;
-    padding: 16px !important;
-  }
-
-  .engineering-menu {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
-    padding-bottom: 16px !important;
-  }
-
-  .engineering-menu button {
-    font-size: 13px !important;
-    padding: 12px 10px !important;
-    border-radius: 12px !important;
-    text-align: center !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   .engineering-content {
     width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
-    min-height: 70vh !important;
-    padding: 16px 12px 90px 12px !important;
-    overflow-x: auto !important;
+    min-height: 100vh !important;
+    padding: 14px 10px 90px 10px !important;
+    overflow-x: hidden !important;
     overflow-y: visible !important;
     box-sizing: border-box !important;
   }
 
+  .engineering-content > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
   .engineering-content h1 {
-    font-size: 26px !important;
-    line-height: 1.2 !important;
+    font-size: 24px !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
   }
 
   .engineering-content h2 {
-    font-size: 20px !important;
+    font-size: 19px !important;
+    line-height: 1.25 !important;
+  }
+
+  .engineering-content p {
+    font-size: 14px !important;
+  }
+
+  .engineering-content [style*="grid-template-columns"] {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .engineering-content [style*="box-shadow"] {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    margin-bottom: 18px !important;
   }
 
   .engineering-content table {
-    min-width: 850px !important;
+    min-width: 800px !important;
   }
 
   .engineering-content svg {
     min-width: 850px !important;
   }
 
+  .engineering-content div:has(table),
+  .engineering-content div:has(svg) {
+    overflow-x: auto !important;
+  }
+
   .engineering-content input,
   .engineering-content select,
   .engineering-content button {
     max-width: 100% !important;
-  }
-
-  .engineering-content [style*="grid-template-columns"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .engineering-menu {
-    grid-template-columns: 1fr !important;
-  }
-
-  .engineering-mobile-topbar strong {
-    font-size: 13px !important;
+    box-sizing: border-box !important;
   }
 }
 `;
