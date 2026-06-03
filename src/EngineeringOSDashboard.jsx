@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import ProfessionalDashboardHome from "./components/ProfessionalDashboardHome";
 import ProfessionalProjectInputDashboard from "./components/ProfessionalProjectInputDashboard";
@@ -23,6 +23,13 @@ import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDash
 
 export default function EngineeringOSDashboard({ access, loginEmail, userEmail }) {
   const [activeModule, setActiveModule] = useState("home");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const loggedEmail = String(access?.profile?.email || loginEmail || userEmail || "")
     .trim()
@@ -84,172 +91,119 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
     }
   };
 
-  return (
-    <>
-      <style>{responsiveCSS}</style>
+  if (isMobile) {
+    return (
+      <div style={mobileStyles.app}>
+        <div style={mobileStyles.topBar}>
+          <div style={mobileStyles.title}>Engineering OS</div>
 
-      <div className="mobile-module-bar">
-        <label>Module</label>
-        <select value={activeModule} onChange={(e) => setActiveModule(e.target.value)}>
-          {modules.map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="engineering-layout" style={styles.app}>
-        <aside className="engineering-sidebar" style={styles.sidebar}>
-          <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
-
-          <div style={styles.userRoleBox}>
-            Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
-            <br />
-            Email: <strong>{loggedEmail || "unknown"}</strong>
-          </div>
-
-          <div className="engineering-menu" style={styles.menu}>
+          <select
+            value={activeModule}
+            onChange={(e) => setActiveModule(e.target.value)}
+            style={mobileStyles.select}
+          >
             {modules.map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setActiveModule(key)}
-                style={{
-                  ...styles.menuButton,
-                  ...(activeModule === key ? styles.activeButton : {}),
-                }}
-              >
+              <option key={key} value={key}>
                 {label}
-              </button>
+              </option>
             ))}
-          </div>
-        </aside>
+          </select>
 
-        <main className="engineering-content" style={styles.content}>
-          {renderModule()}
-        </main>
+          <div style={mobileStyles.userBox}>
+            <strong>{isAdmin ? "Admin" : "User"}</strong>
+            <br />
+            {loggedEmail || "unknown"}
+          </div>
+        </div>
+
+        <main style={mobileStyles.content}>{renderModule()}</main>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div style={styles.app}>
+      <aside style={styles.sidebar}>
+        <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
+
+        <div style={styles.userRoleBox}>
+          Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
+          <br />
+          Email: <strong>{loggedEmail || "unknown"}</strong>
+        </div>
+
+        <div style={styles.menu}>
+          {modules.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveModule(key)}
+              style={{
+                ...styles.menuButton,
+                ...(activeModule === key ? styles.activeButton : {}),
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <main style={styles.content}>{renderModule()}</main>
+    </div>
   );
 }
 
-const responsiveCSS = `
-.mobile-module-bar {
-  display: none;
-}
+const mobileStyles = {
+  app: {
+    width: "100%",
+    minHeight: "100vh",
+    background: "#e5e7eb",
+    overflowX: "hidden",
+  },
 
-@media (max-width: 768px) {
-  html, body, #root {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-  }
+  topBar: {
+    position: "sticky",
+    top: 0,
+    zIndex: 9999,
+    background: "#050505",
+    color: "white",
+    padding: "12px",
+    borderBottom: "3px solid #ffcc00",
+  },
 
-  .engineering-sidebar {
-    display: none !important;
-  }
+  title: {
+    fontSize: "18px",
+    fontWeight: "900",
+    marginBottom: "10px",
+    color: "#ffcc00",
+  },
 
-  .mobile-module-bar {
-    display: flex !important;
-    position: sticky;
-    top: 0;
-    z-index: 9999;
-    background: #050505;
-    padding: 12px;
-    gap: 10px;
-    align-items: center;
-    border-bottom: 2px solid #ffcc00;
-  }
+  select: {
+    width: "100%",
+    padding: "14px",
+    borderRadius: "14px",
+    border: "2px solid #ffcc00",
+    fontSize: "16px",
+    fontWeight: "900",
+    marginBottom: "10px",
+  },
 
-  .mobile-module-bar label {
-    color: #ffcc00;
-    font-weight: 900;
-    font-size: 14px;
-  }
+  userBox: {
+    background: "#171717",
+    borderRadius: "12px",
+    padding: "10px",
+    color: "#ffcc00",
+    fontSize: "13px",
+    wordBreak: "break-word",
+  },
 
-  .mobile-module-bar select {
-    flex: 1;
-    padding: 12px;
-    border-radius: 12px;
-    border: 2px solid #ffcc00;
-    font-weight: 900;
-    font-size: 15px;
-    background: white;
-    color: #111827;
-  }
-
-  .engineering-layout {
-    display: block !important;
-    height: auto !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-  }
-
-  .engineering-content {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: 100vh !important;
-    padding: 14px 10px 90px 10px !important;
-    overflow-x: hidden !important;
-    overflow-y: visible !important;
-    box-sizing: border-box !important;
-  }
-
-  .engineering-content > div {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-  }
-
-  .engineering-content h1 {
-    font-size: 24px !important;
-    line-height: 1.25 !important;
-    word-break: break-word !important;
-  }
-
-  .engineering-content h2 {
-    font-size: 19px !important;
-    line-height: 1.25 !important;
-  }
-
-  .engineering-content p {
-    font-size: 14px !important;
-  }
-
-  .engineering-content [style*="grid-template-columns"] {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-  }
-
-  .engineering-content [style*="box-shadow"] {
-    padding: 16px !important;
-    border-radius: 16px !important;
-    margin-bottom: 18px !important;
-  }
-
-  .engineering-content table {
-    min-width: 800px !important;
-  }
-
-  .engineering-content svg {
-    min-width: 850px !important;
-  }
-
-  .engineering-content div:has(table),
-  .engineering-content div:has(svg) {
-    overflow-x: auto !important;
-  }
-
-  .engineering-content input,
-  .engineering-content select,
-  .engineering-content button {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-}
-`;
+  content: {
+    width: "100%",
+    padding: "12px",
+    boxSizing: "border-box",
+    overflowX: "auto",
+  },
+};
 
 const styles = {
   app: {
@@ -307,7 +261,6 @@ const styles = {
     fontSize: "18px",
     fontWeight: "800",
     cursor: "pointer",
-    flexShrink: 0,
   },
 
   activeButton: {
@@ -321,7 +274,6 @@ const styles = {
     padding: "48px 42px 160px 42px",
     overflowY: "auto",
     overflowX: "auto",
-    scrollBehavior: "smooth",
     boxSizing: "border-box",
   },
 };
