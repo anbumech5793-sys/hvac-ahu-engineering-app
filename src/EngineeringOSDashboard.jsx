@@ -23,6 +23,7 @@ import ProfessionalSettingsDashboard from "./components/ProfessionalSettingsDash
 
 export default function EngineeringOSDashboard({ access, loginEmail, userEmail }) {
   const [activeModule, setActiveModule] = useState("home");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const loggedEmail = String(
     access?.profile?.email || loginEmail || userEmail || ""
@@ -59,6 +60,11 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
     ...(isAdmin ? [["admin", "Admin Panel"]] : []),
     ["settings", "Settings"],
   ];
+
+  const handleMenuClick = (key) => {
+    setActiveModule(key);
+    setMenuOpen(false);
+  };
 
   const renderModule = () => {
     if ((activeModule === "admin" || activeModule === "materialPrices") && !isAdmin) {
@@ -132,38 +138,177 @@ export default function EngineeringOSDashboard({ access, loginEmail, userEmail }
   };
 
   return (
-    <div className="engineering-layout" style={styles.app}>
-      <aside className="engineering-sidebar" style={styles.sidebar}>
-        <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
+    <>
+      <style>{responsiveCSS}</style>
 
-        <div style={styles.userRoleBox}>
-          Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
-          <br />
-          Email: <strong>{loggedEmail || "unknown"}</strong>
-        </div>
+      <div className="engineering-mobile-topbar">
+        <button
+          className="engineering-mobile-menu-btn"
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          {menuOpen ? "Close Menu" : "Open Menu"}
+        </button>
 
-        <div className="engineering-menu" style={styles.menu}>
-          {modules.map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setActiveModule(key)}
-              style={{
-                ...styles.menuButton,
-                ...(activeModule === key ? styles.activeButton : {}),
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </aside>
+        <strong>Apfel Globus Engineering OS</strong>
+      </div>
 
-      <main className="engineering-content" style={styles.content}>
-        {renderModule()}
-      </main>
-    </div>
+      <div className="engineering-layout" style={styles.app}>
+        <aside
+          className={`engineering-sidebar ${menuOpen ? "mobile-open" : ""}`}
+          style={styles.sidebar}
+        >
+          <h2 style={styles.sidebarTitle}>Engineering Modules</h2>
+
+          <div style={styles.userRoleBox}>
+            Logged in as: <strong>{isAdmin ? "Admin" : "User"}</strong>
+            <br />
+            Email: <strong>{loggedEmail || "unknown"}</strong>
+          </div>
+
+          <div className="engineering-menu" style={styles.menu}>
+            {modules.map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => handleMenuClick(key)}
+                style={{
+                  ...styles.menuButton,
+                  ...(activeModule === key ? styles.activeButton : {}),
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="engineering-content" style={styles.content}>
+          {renderModule()}
+        </main>
+      </div>
+    </>
   );
 }
+
+const responsiveCSS = `
+.engineering-mobile-topbar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden !important;
+  }
+
+  .engineering-mobile-topbar {
+    display: flex !important;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    background: #050505;
+    color: white;
+    padding: 12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 2px solid #333;
+  }
+
+  .engineering-mobile-menu-btn {
+    background: #e60000;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .engineering-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  .engineering-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 16px !important;
+    border-right: none !important;
+    border-bottom: 2px solid #333 !important;
+    transition: max-height 0.25s ease, padding 0.25s ease !important;
+  }
+
+  .engineering-sidebar.mobile-open {
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+
+  .engineering-menu {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .engineering-menu button {
+    font-size: 13px !important;
+    padding: 12px 10px !important;
+    border-radius: 12px !important;
+    text-align: center !important;
+  }
+
+  .engineering-content {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 70vh !important;
+    padding: 16px 12px 90px 12px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  .engineering-content h1 {
+    font-size: 26px !important;
+    line-height: 1.2 !important;
+  }
+
+  .engineering-content h2 {
+    font-size: 20px !important;
+  }
+
+  .engineering-content table {
+    min-width: 850px !important;
+  }
+
+  .engineering-content svg {
+    min-width: 850px !important;
+  }
+
+  .engineering-content input,
+  .engineering-content select,
+  .engineering-content button {
+    max-width: 100% !important;
+  }
+
+  .engineering-content [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .engineering-menu {
+    grid-template-columns: 1fr !important;
+  }
+
+  .engineering-mobile-topbar strong {
+    font-size: 13px !important;
+  }
+}
+`;
 
 const styles = {
   app: {
@@ -234,7 +379,7 @@ const styles = {
     height: "calc(100vh - 92px)",
     padding: "48px 42px 160px 42px",
     overflowY: "auto",
-    overflowX: "hidden",
+    overflowX: "auto",
     scrollBehavior: "smooth",
     boxSizing: "border-box",
   },
